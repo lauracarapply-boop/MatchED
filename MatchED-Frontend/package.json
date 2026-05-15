@@ -1,0 +1,8 @@
+{
+  "name": "matched-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "npx serve . -p 5500"
+  }
+}

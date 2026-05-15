@@ -1,0 +1,367 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OpportunityType {
+  SCHOLARSHIP
+  FELLOWSHIP
+  INTERNSHIP
+  JOB
+  VOLUNTEERING
+  GRANT
+  COMPETITION
+  CONFERENCE
+  EXCHANGE_PROGRAM
+  SUMMER_PROGRAM
+  ONLINE_COURSE
+  WORKSHOP
+  RESEARCH
+  LEADERSHIP_PROGRAM
+  IMMIGRATION
+  OTHER
+}
+
+enum FundingType {
+  FULLY_FUNDED
+  PARTIALLY_FUNDED
+  PAID
+  UNPAID
+  STIPEND
+  TUITION_ONLY
+  TRAVEL_ONLY
+  SELF_FUNDED
+  UNKNOWN
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  GAP_YEAR
+  UNDERGRADUATE
+  MASTERS
+  PHD
+  POSTDOC
+  EARLY_CAREER
+  PROFESSIONAL
+  ANY
+}
+
+enum OpportunityStatus {
+  DRAFT
+  NEEDS_REVIEW
+  USER_SUBMITTED_PENDING
+  AI_CAPTURED_PENDING
+  APPROVED
+  PUBLISHED
+  REJECTED
+  EXPIRED
+  DUPLICATE
+  POSSIBLE_DUPLICATE
+  ARCHIVED
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  UNKNOWN
+}
+
+enum CompetitivenessLevel {
+  LOW
+  MEDIUM
+  HIGH
+  EXTREME
+  UNKNOWN
+}
+
+enum CrawlStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+enum SubmissionSource {
+  AI
+  USER
+  ADMIN
+  IMPORTED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ApplicationStatus {
+  SAVED
+  STARTED
+  APPLIED
+  COMPLETED
+  ABANDONED
+}
+
+enum UserQuestStatus {
+  NOT_STARTED
+  STARTED
+  COMPLETED
+  ABANDONED
+}
+
+enum AdminAction {
+  APPROVE_OPPORTUNITY
+  PUBLISH_OPPORTUNITY
+  REJECT_OPPORTUNITY
+  EDIT_OPPORTUNITY
+  ARCHIVE_OPPORTUNITY
+  DELETE_OPPORTUNITY
+  MARK_DUPLICATE
+  CREATE_OPPORTUNITY
+  RUN_CRAWLER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  image         String?
+  role          UserRole  @default(USER)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  last_login_at DateTime?
+
+  // Relations
+  submittedOpportunities Opportunity[]     @relation("SubmittedBy")
+  reviewedOpportunities   Opportunity[]     @relation("ReviewedBy")
+  applications            OpportunityApplication[]
+  userQuests              UserQuest[]
+  matchEvents             MatchEvent[]
+  adminAuditLogs          AdminAuditLog[]
+
+  @@index([email])
+}
+
+model Opportunity {
+  id                       String               @id @default(cuid())
+  title                    String
+  slug                     String               @unique
+  summary                  String?
+  description_short        String?
+  description_long         String?
+  opportunity_type         OpportunityType      @default(OTHER)
+  source_name              String
+  source_url               String
+  original_url             String?
+  application_url          String?
+  organization_name        String?
+  host_institution         String?
+  country                  String?
+  region                   String?
+  city                     String?
+  is_remote                Boolean?
+  is_online                Boolean?
+  eligible_countries       String[]
+  eligible_regions         String[]
+  education_levels         EducationLevel[]
+  target_audience          String[]
+  fields_of_interest       String[]
+  funding_type             FundingType          @default(UNKNOWN)
+  funding_amount           String?
+  currency                 String?
+  costs_covered            String[]
+  application_deadline     DateTime?
+  start_date               DateTime?
+  end_date                 DateTime?
+  duration                 String?
+  language_requirements    String[]
+  age_min                  Int?
+  age_max                  Int?
+  gender_eligibility       String?
+  citizenship_requirements String[]
+  academic_requirements    String[]
+  documents_required       String[]
+  selection_criteria       String[]
+  benefits                 String[]
+  tags                     String[]
+  difficulty_level         DifficultyLevel      @default(UNKNOWN)
+  competitiveness_level    CompetitivenessLevel @default(UNKNOWN)
+  relevance_score          Float?
+  confidence_score         Float                @default(0)
+  status                   OpportunityStatus    @default(DRAFT)
+  submission_source        SubmissionSource     @default(AI)
+  submitted_by_user_id     String?
+  submitted_by_email       String?
+  submitted_at             DateTime?
+  reviewed_by_user_id      String?
+  reviewed_at              DateTime?
+  review_notes             String?
+  rejection_reason         String?
+  published_at             DateTime?
+  last_seen_at             DateTime?
+  extracted_at             DateTime
+  created_at               DateTime             @default(now())
+  updated_at               DateTime             @updatedAt
+
+  // Relations
+  submittedBy              User?                @relation("SubmittedBy", fields: [submitted_by_user_id], references: [id])
+  reviewedBy               User?                @relation("ReviewedBy", fields: [reviewed_by_user_id], references: [id])
+  applications             OpportunityApplication[]
+  matchEvents              MatchEvent[]
+  adminAuditLogs           AdminAuditLog[]
+
+  @@index([status])
+  @@index([opportunity_type])
+  @@index([funding_type])
+  @@index([application_deadline])
+  @@index([country])
+  @@index([source_name])
+  @@index([submission_source])
+  @@index([submitted_by_user_id])
+}
+
+model Source {
+  id                      String    @id @default(cuid())
+  name                    String    @unique
+  base_url                String
+  is_active               Boolean   @default(true)
+  crawl_frequency         String    @default("daily")
+  last_crawled_at         DateTime?
+  last_successful_crawl_at DateTime?
+  last_error              String?
+  robots_allowed          Boolean   @default(true)
+  notes                   String?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  crawlRuns        CrawlRun[]
+  rawOpportunities RawOpportunity[]
+}
+
+model CrawlRun {
+  id                     String      @id @default(cuid())
+  source                 Source      @relation(fields: [source_id], references: [id])
+  source_id              String
+  started_at             DateTime    @default(now())
+  finished_at            DateTime?
+  status                 CrawlStatus @default(RUNNING)
+  pages_visited          Int         @default(0)
+  opportunities_found    Int         @default(0)
+  opportunities_created  Int         @default(0)
+  opportunities_updated  Int         @default(0)
+  opportunities_skipped  Int         @default(0)
+  errors_count           Int         @default(0)
+  log                    String?
+  created_at             DateTime    @default(now())
+
+  rawOpportunities RawOpportunity[]
+
+  @@index([source_id])
+  @@index([status])
+  @@index([started_at])
+}
+
+model RawOpportunity {
+  id                     String    @id @default(cuid())
+  source                 Source    @relation(fields: [source_id], references: [id])
+  source_id              String
+  crawlRun               CrawlRun? @relation(fields: [crawl_run_id], references: [id])
+  crawl_run_id           String?
+  source_url             String
+  raw_title              String?
+  raw_text               String
+  raw_html               String?
+  extracted_json         Json?
+  extraction_confidence  Float?
+  status                 String    @default("pending")
+  error_message          String?
+  created_at             DateTime  @default(now())
+
+  @@index([source_id])
+  @@index([crawl_run_id])
+  @@index([status])
+}
+
+model OpportunityApplication {
+  id             String            @id @default(cuid())
+  user           User              @relation(fields: [user_id], references: [id])
+  user_id        String
+  opportunity    Opportunity       @relation(fields: [opportunity_id], references: [id])
+  opportunity_id String
+  status         ApplicationStatus @default(SAVED)
+  applied_at     DateTime?
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+
+  @@index([user_id])
+  @@index([opportunity_id])
+  @@index([status])
+}
+
+model Quest {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  userQuests UserQuest[]
+}
+
+model UserQuest {
+  id           String          @id @default(cuid())
+  user         User            @relation(fields: [user_id], references: [id])
+  user_id      String
+  quest        Quest           @relation(fields: [quest_id], references: [id])
+  quest_id     String
+  status       UserQuestStatus @default(NOT_STARTED)
+  started_at   DateTime?
+  completed_at DateTime?
+  created_at   DateTime        @default(now())
+  updated_at   DateTime        @updatedAt
+
+  @@index([user_id])
+  @@index([quest_id])
+  @@index([status])
+}
+
+model MatchEvent {
+  id             String      @id @default(cuid())
+  user           User        @relation(fields: [user_id], references: [id])
+  user_id        String
+  opportunity    Opportunity @relation(fields: [opportunity_id], references: [id])
+  opportunity_id String
+  match_score    Float
+  reasons        String[]
+  warnings       String[]
+  created_at     DateTime    @default(now())
+
+  @@index([user_id])
+  @@index([opportunity_id])
+  @@index([match_score])
+}
+
+model AdminAuditLog {
+  id          String      @id @default(cuid())
+  admin       User        @relation(fields: [admin_id], references: [id])
+  admin_id    String
+  action      AdminAction
+  entity_type String
+  entity_id   String
+  old_value   Json?
+  new_value   Json?
+  created_at  DateTime    @default(now())
+
+  @@index([admin_id])
+  @@index([action])
+  @@index([entity_type])
+  @@index([created_at])
+}
