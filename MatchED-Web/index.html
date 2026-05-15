@@ -661,7 +661,7 @@
     getQuests: (uid) => req('/quests?userId=' + uid),
     createQuest: (uid, oid) => req('/quests', { method: 'POST', body: JSON.stringify({ userId: uid, opportunityId: oid }) }),
     completeTask: (qid, tid) => req('/quests/' + qid + '/tasks/' + tid, { method: 'PUT', body: JSON.stringify({ isCompleted: true }) }),
-    setQuestStatus: (qid, status) => req('/quests/' + qid + '/status', { method: 'PUT', body: JSON.stringify({ status }) }),
+    setQuestStatus: (qid, status) => req('/quests/' + qid + '/status', { method: 'PUT', body: JSON.stringify({ status, userId: state.user?.id }) }),
     saveHSProfile: (userId, data) => req('/users/profiles/high-school', { method: 'POST', body: JSON.stringify({ userId, ...data }) }),
     saveColProfile: (userId, data) => req('/users/profiles/college', { method: 'POST', body: JSON.stringify({ userId, ...data }) }),
     getMatchedOpps: (userId) => req('/opportunities/match/' + userId),
@@ -2005,11 +2005,13 @@
             const submitData = await api.setQuestStatus(b.dataset.qid, 'submitted');
             const quest = quests.find(q => q.id === b.dataset.qid);
             if (quest) syncResult(quest.opportunityId, 'waiting').catch(() => {});
-            if (submitData && submitData.xpTotal) {
+            if (submitData && submitData.xpGained > 0) {
               state.updateUser({ xpTotal: submitData.xpTotal, level: submitData.level });
-              if (submitData.levelUp) toast(`🎉 Level up! Nível ${submitData.level}`, 'success');
+              if (submitData.levelUp) toast(`🎉 ${lang.current === 'en' ? 'Level up!' : 'Subiu de nível!'} Nível ${submitData.level}`, 'success');
+              else toast(lang.current === 'en' ? `Application submitted! +${submitData.xpGained} XP` : `Aplicação enviada! +${submitData.xpGained} XP`, 'success', 4000);
+            } else {
+              toast(lang.current === 'en' ? 'Application submitted!' : 'Aplicação enviada!', 'success', 4000);
             }
-            toast(lang.current === 'en' ? `Application submitted! +70 XP` : `Aplicação enviada! +70 XP`, 'success', 4000);
             rt.go('results');
           } catch(e) { b.disabled = false; toast(e.message || 'Erro', 'error'); }
         };
