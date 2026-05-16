@@ -32,7 +32,7 @@ app.use(cors({
   origin: (origin, cb) => {
     // Allow requests with no origin (mobile apps, curl, same-origin)
     if (!origin) return cb(null, true);
-    if (ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.vercel.app'))) {
+    if (ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.vercel.app') || origin.endsWith('.netlify.app'))) {
       return cb(null, true);
     }
     cb(new Error('Not allowed by CORS'));
