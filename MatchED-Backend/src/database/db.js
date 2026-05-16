@@ -7,6 +7,11 @@ const dbPath = process.env.DB_PATH || path.join(__dirname, '../../data/db.json')
 
 function initializeDatabase() {
   if (!fs.existsSync(dbPath)) {
+    // Ensure the parent directory exists (e.g., /app/data)
+    const dir = path.dirname(dbPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
     const initialData = {
       users: [],
       highSchoolProfiles: [],
