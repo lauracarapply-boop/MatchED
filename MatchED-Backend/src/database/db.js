@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const dbPath = process.env.DB_PATH || path.join(__dirname, '../../data/db.json');
 
 function initializeDatabase() {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   if (!fs.existsSync(dbPath)) {
     const initialData = {
       users: [],
