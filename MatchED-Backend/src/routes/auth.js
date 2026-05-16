@@ -119,6 +119,14 @@ router.post('/register', async (req, res) => {
     });
     writeDatabase(db);
 
+    if (process.env.SKIP_EMAIL_VERIFICATION === 'true') {
+      const idx = db.users.findIndex(u => u.id === userId);
+      db.users[idx].emailVerified = true;
+      writeDatabase(db);
+      const token = makeToken(user);
+      return res.json({ token, user: safeUser({ ...user, emailVerified: true }) });
+    }
+
     let emailSent = true;
     try { await sendVerificationEmail(user.email, verificationCode); } catch (mailErr) {
       console.error('Verification email failed:', mailErr.message);
