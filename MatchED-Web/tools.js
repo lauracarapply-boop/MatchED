@@ -292,6 +292,11 @@ function deadlineLine(o, full) {
     const soon = days <= 14 ? ' dl-soon' : '';
     return `<span class="dl-open${soon}">⏰ ${fmtDate(o.deadline)}${days <= 30 ? ` · ${typeof formatDL === 'function' ? esc(formatDL(o.deadline)) : days + 'd'}` : ''}</span>`;
   }
+  if (o.deadline_estimate) {
+    const pt = lang.current !== 'en';
+    const note = pt ? 'estimado pelo ciclo anterior — confirme no site oficial' : 'estimated from the last cycle — check the official site';
+    return `<span class="dl-est" title="${esc(note)}">≈ ${fmtDate(o.deadline_estimate)} · ${pt ? 'provável' : 'likely'}</span>${full ? `<div class="dl-note">${esc(note)}${o.deadline_text ? ` (${esc(tidyText(o.deadline_text))})` : ''}</div>` : ''}`;
+  }
   if (o.last_known_deadline) return `<span class="dl-closed">${esc(D.lastDeadline)}: ${fmtDate(o.last_known_deadline)}</span>`;
   if (o.deadline_text) { const t = tidyText(o.deadline_text); return `<span class="dl-text" title="${esc(t)}">⏰ ${esc(full ? t : (t.length > 60 ? t.slice(0, 57) + '…' : t))}</span>`; }
   return `<span class="dl-text">${esc(D.noDeadline)}</span>`;
@@ -535,7 +540,7 @@ async function pageCheck(el, rt) {
           <div class="count-row">
             <span>💰 <b>${data.counts.funded}</b> ${esc(C.countFunded)}</span>
             <span>🇧🇷 <b>${data.counts.brazil}</b> ${esc(C.countBrazil)}</span>
-            <span>⏰ <b>${data.counts.closingSoon}</b> ${esc(C.countSoon)}</span>
+            ${data.counts.closingSoon ? `<span>⏰ <b>${data.counts.closingSoon}</b> ${esc(C.countSoon)}</span>` : ''}
           </div>
           <p class="muted">${esc(C.resultsSub)}</p>
           ${state.isLoggedIn() ? '' : `<a href="#/signup" class="btn btn-primary save-cta">${esc(C.saveCta)}</a>`}

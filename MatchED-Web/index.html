@@ -2364,7 +2364,7 @@
       const pt = lang.current === 'pt';
       const undatedHtml = undated.length ? `
         <div style="margin-bottom:24px;">
-          <div class="dl-section-label" style="color:#94a3b8;">${pt ? 'Sem data exata — confira no site oficial' : 'No exact date — check the official site'}</div>
+          <div class="dl-section-label" style="color:#94a3b8;">${pt ? 'Sem data oficial ainda — confira no site' : 'No official date yet — check the site'}</div>
           ${undated.map(d => `
             <div class="dl-card" style="border-left:4px solid #475569;">
               <div class="dl-card-top"><div style="flex:1;min-width:0;">
@@ -2372,7 +2372,7 @@
                 <div class="dl-card-org">${esc(d.organizationName || '')}</div>
               </div></div>
               <div class="dl-card-meta">
-                <span class="dl-date-label">⏰ ${esc(d.deadline_text || (d.last_known_deadline ? (pt ? 'Último prazo conhecido: ' : 'Last known deadline: ') + new Date(d.last_known_deadline).toLocaleDateString(pt ? 'pt-BR' : 'en-US') : (pt ? 'Prazo não informado' : 'Deadline not listed')))}</span>
+                <span class="dl-date-label">⏰ ${d.deadline_estimate ? `≈ ${esc(new Date(d.deadline_estimate + 'T12:00:00Z').toLocaleDateString(pt ? 'pt-BR' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }))} · ${pt ? 'provável (confirme no site)' : 'likely (check the site)'}` : esc(d.deadline_text || (d.last_known_deadline ? (pt ? 'Último prazo conhecido: ' : 'Last known deadline: ') + new Date(d.last_known_deadline).toLocaleDateString(pt ? 'pt-BR' : 'en-US') : (pt ? 'Prazo não informado' : 'Deadline not listed')))}</span>
                 ${safeUrl(d.websiteUrl) ? `<a class="dl-date-label" style="color:#A3E635;" href="${esc(safeUrl(d.websiteUrl))}" target="_blank" rel="noopener">${pt ? 'Site oficial ↗' : 'Official site ↗'}</a>` : ''}
               </div>
             </div>`).join('')}

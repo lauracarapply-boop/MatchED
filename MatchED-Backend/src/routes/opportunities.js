@@ -34,7 +34,9 @@ function applyFilters(list, q) {
 
 function sortList(list, sort) {
   if (sort === 'deadline') {
-    const rank = o => { const d = deadlineInfo(o); return d.status === 'upcoming' ? d.daysLeft : d.status === 'open' ? 10000 : 20000; };
+    const est = o => o.deadline_estimate ? Math.round((new Date(o.deadline_estimate) - Date.now()) / 86400000) : null;
+    // exact dates first, then estimated ones, then "no date", then closed
+    const rank = o => { const d = deadlineInfo(o); if (d.status === 'upcoming') return d.daysLeft; if (d.status === 'closed') return 30000; const e = est(o); return e != null ? 5000 + e : 10000; };
     return list.sort((a, b) => rank(a) - rank(b));
   }
   if (sort === 'match') return list.sort((a, b) => (b.computedScore || 0) - (a.computedScore || 0));
@@ -106,7 +108,11 @@ router.post('/check', rateLimit({ windowMs: 60_000, max: 30 }), optionalAuth, (r
     eligible: list.length,
     funded: list.filter(o => o.flags.funded).length,
     brazil: list.filter(o => o.flags.brazilFocused).length,
-    closingSoon: list.filter(o => o.daysLeft !== null && o.daysLeft <= 30).length,
+    closingSoon: list.filter(o => {
+      const d = o.daysLeft !== null && o.daysLeft !== undefined ? o.daysLeft
+        : (o.deadline_estimate ? Math.round((new Date(o.deadline_estimate) - Date.now()) / 86400000) : null);
+      return d !== null && d >= 0 && d <= 30;
+    }).length,
   };
   db.checkEvents.push({
     id: uuidv4(), at: new Date().toISOString(), loggedIn: Boolean(req.user),

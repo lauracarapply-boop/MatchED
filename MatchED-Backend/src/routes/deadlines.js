@@ -1,7 +1,7 @@
 const express = require('express');
 const { readDatabase } = require('../database/db');
 const { requireSelf } = require('../middleware/auth');
-const { firstUrl, tidyCaps, sentenceCaps } = require('../lib/opportunities');
+const { firstUrl, tidyCaps, cleanDeadlineText, estimateDeadline } = require('../lib/opportunities');
 
 const router = express.Router();
 
@@ -61,12 +61,13 @@ function undatedFor(db, userId) {
       opportunityId: oppId,
       programName: tidyCaps(opp.programName || opp.title) || '—',
       organizationName: tidyCaps(opp.organizationName || opp.organization || ''),
-      deadline_text: opp.deadline_text ? sentenceCaps(opp.deadline_text) : null,
+      deadline_text: cleanDeadlineText(opp.deadline_text),
+      deadline_estimate: estimateDeadline(opp),
       last_known_deadline: opp.last_known_deadline || null,
       source: m, websiteUrl: firstUrl(opp) || null,
     });
   }
-  return out;
+  return out.sort((a, b) => String(a.deadline_estimate || '9999').localeCompare(String(b.deadline_estimate || '9999')));
 }
 
 router.get('/:userId', requireSelf, (req, res) => {

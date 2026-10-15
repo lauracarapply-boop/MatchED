@@ -50,6 +50,42 @@ function cutAtWord(text, max) {
   return cut.slice(0, Math.max(cut.lastIndexOf(' '), max - 40)).replace(/[\s,;:.-]+$/, '') + '…';
 }
 
+// The deadline column sometimes holds reviewer notes or stray numbers
+// ("Validate legitimacy…", "500-5000"). Students should never see those.
+function cleanDeadlineText(text) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!t || /^(n\/?a|-|—|tbd|\?)$/i.test(t)) return null;
+  if (/^[\d.,\s–-]+$/.test(t)) return null; // only numbers: not a date
+  if (/\b(validate|verify|monitor|fetch|blocked|legacy|relevance|publication|URL|homepage|not a student|branding|affiliation|points to)\b/i.test(t)) return null;
+  return sentenceCaps(t);
+}
+
+const MONTHS = { janeiro: 1, fevereiro: 2, 'março': 3, marco: 3, abril: 4, maio: 5, junho: 6, julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+
+// Most programs repeat every year on about the same date. When we only know
+// "15 de março" or last year's date, estimate the next one (clearly labelled
+// as an estimate on the site, never used for reminder e-mails).
+function estimateDeadline(opp, now = new Date()) {
+  if (opp.deadline) return null;
+  let day = null, month = null;
+  const t = String(opp.deadline_text || '').toLowerCase().trim();
+  let m = t.match(/^(\d{1,2})\s+de\s+([a-zç]+)(?:\s+de\s+\d{4})?(?:[,\s].*)?$/) || t.match(/^([a-z]+)\.?\s+(\d{1,2})(?:,?\s+\d{4})?$/);
+  if (m) {
+    if (/^\d/.test(m[1])) { day = +m[1]; month = MONTHS[m[2]]; } else { month = MONTHS[m[1]]; day = +m[2]; }
+  } else if (opp.last_known_deadline) {
+    const d = new Date(opp.last_known_deadline);
+    if (!isNaN(d)) { day = d.getUTCDate(); month = d.getUTCMonth() + 1; }
+  }
+  if (!day || !month || day > 31) return null;
+  const today = new Date(now.toISOString().slice(0, 10) + 'T00:00:00Z');
+  for (let y = today.getUTCFullYear(); y <= today.getUTCFullYear() + 1; y++) {
+    const c = new Date(Date.UTC(y, month - 1, day));
+    if (c >= today) return c.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 // The shape the website renders. Old records use programName/organizationName,
 // imported ones use title/organization; both are normalized here.
 function publicOpp(opp, { full = false } = {}) {
@@ -63,7 +99,8 @@ function publicOpp(opp, { full = false } = {}) {
     description_pt: opp.description_pt || null,
     tags: (opp.tags && opp.tags.length ? opp.tags : opp.focus_areas) || [],
     deadline: opp.deadline || null,
-    deadline_text: opp.deadline_text ? sentenceCaps(opp.deadline_text) : null,
+    deadline_text: cleanDeadlineText(opp.deadline_text),
+    deadline_estimate: estimateDeadline(opp),
     last_known_deadline: opp.last_known_deadline || null,
     eligibility: sentenceCaps(opp.eligibility || ''),
     eligibility_pt: opp.eligibility_pt || null,
@@ -88,4 +125,4 @@ function isLive(opp) {
   return opp && opp.active !== false && opp.status !== 'archived';
 }
 
-module.exports = { tidyCaps, sentenceCaps, publicOpp, flagsFor, isLive, firstUrl };
+module.exports = { tidyCaps, sentenceCaps, cleanDeadlineText, estimateDeadline, publicOpp, flagsFor, isLive, firstUrl };

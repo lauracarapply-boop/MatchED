@@ -187,3 +187,25 @@ test('admin can upload a spreadsheet; non-admins and non-xlsx files are refused'
   const r = await post(adminToken, buf);
   assert.strictEqual(r.status, 200, await r.clone().text());
 });
+
+test('deadline text: reviewer notes hidden, yearly dates estimated', () => {
+  const { cleanDeadlineText, estimateDeadline, tidyCaps } = require('../src/lib/opportunities');
+  assert.strictEqual(cleanDeadlineText('Validate legitimacy, application cycle, and student relevance before publication.'), null);
+  assert.strictEqual(cleanDeadlineText('500-5000'), null);
+  assert.strictEqual(cleanDeadlineText('INSCRIÇÕES GERALMENTE DE DEZEMBRO ATÉ MARÇO'), 'Inscrições geralmente de dezembro até março');
+  const now = new Date('2026-10-15T00:00:00Z');
+  assert.strictEqual(estimateDeadline({ deadline_text: '7 de janeiro' }, now), '2027-01-07');
+  assert.strictEqual(estimateDeadline({ deadline_text: '1 de Novembro' }, now), '2026-11-01');
+  assert.strictEqual(estimateDeadline({ last_known_deadline: '2023-08-05' }, now), '2027-08-05');
+  assert.strictEqual(estimateDeadline({ deadline: '2027-01-01', deadline_text: '7 de janeiro' }, now), null);
+  assert.strictEqual(estimateDeadline({ deadline_text: 'Rolling admissions' }, now), null);
+  assert.strictEqual(tidyCaps('NASA SEES HIGH SCHOOL INTERNSHIP'), 'NASA SEES High School Internship');
+});
+
+test('website scripts have no syntax errors', () => {
+  const web = path.join(__dirname, '..', '..', 'MatchED-Web');
+  const html = fs.readFileSync(path.join(web, 'index.html'), 'utf8');
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+  for (const code of inline) assert.doesNotThrow(() => new Function(code), 'inline script in index.html');
+  for (const f of ['tools.js', 'sw.js']) assert.doesNotThrow(() => new Function(fs.readFileSync(path.join(web, f), 'utf8')), f);
+});

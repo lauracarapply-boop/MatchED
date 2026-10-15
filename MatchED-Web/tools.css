@@ -180,3 +180,6 @@ button:focus-visible, a:focus-visible, .chip:focus-visible, select:focus-visible
 
 .pt-qr-img { width: 180px; background: #fff; padding: 8px; border-radius: 10px; }
 .pt-qr-img svg { width: 100%; height: auto; display: block; }
+
+.dl-est { color: #fbbf24; }
+.dl-note { font-size: 12px; color: var(--text-3); margin-top: 4px; line-height: 1.4; }
