@@ -152,4 +152,15 @@ async function importFromXlsx(db, filePath, importedBy = 'cli') {
   return importRows(db, rows, { importSource: 'xlsx', sheetName: name, importedBy });
 }
 
-module.exports = { importFromXlsx, readWorkbookRows, parseDeadline };
+// Demo examples (seed data with made-up dates) are removed once real sheets are loaded
+function removeDemoOpportunities(db) {
+  const demoIds = new Set((db.opportunities || []).filter(o => o.demo).map(o => o.id));
+  if (!demoIds.size) return 0;
+  db.opportunities = db.opportunities.filter(o => !demoIds.has(o.id));
+  for (const c of ['swipeEvents', 'swipes', 'savedOpportunities', 'applicationQuests', 'quests', 'resultTracking']) {
+    if (Array.isArray(db[c])) db[c] = db[c].filter(r => !demoIds.has(r.opportunityId));
+  }
+  return demoIds.size;
+}
+
+module.exports = { importFromXlsx, readWorkbookRows, parseDeadline, removeDemoOpportunities };

@@ -161,8 +161,8 @@ router.get('/impact', (req, res) => {
     funnel: {
       eligibilityChecks: checks.length,
       checksFromPartners: checks.filter(c => c.ref).length,
-      signups: db.users.length,
-      onboarded: db.users.filter(u => u.userPath).length,
+      signups: db.users.filter(u => !u.demo).length,
+      onboarded: db.users.filter(u => !u.demo && u.userPath).length,
       savedOrLiked: new Set([...db.savedOpportunities.map(s => s.userId), ...db.swipeEvents.filter(s => s.action === 'like').map(s => s.userId)]).size,
       startedQuest: new Set(db.applicationQuests.map(q => q.userId)).size,
       submitted: new Set(db.applicationQuests.filter(q => q.status !== 'in-progress' && q.status !== 'withdrawn').map(q => q.userId)).size,

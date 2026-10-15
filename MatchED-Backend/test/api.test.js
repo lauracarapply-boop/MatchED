@@ -171,3 +171,19 @@ test('reports and public stats', async () => {
   assert.ok(stats.data.opportunitiesVerified >= 1);
   assert.strictEqual(stats.data.publicSchoolShare, null, 'hidden while there is too little data');
 });
+
+test('admin can upload a spreadsheet; non-admins and non-xlsx files are refused', async () => {
+  const ExcelJS = require('exceljs');
+  const student = await signup('upload-student@test.dev');
+  const login = await call('POST', '/api/auth/login', { body: { email: 'admin@test.dev', password: 'senha-forte-123' } });
+  const adminToken = login.data.token;
+  const post = (token, body) => fetch(base + '/api/import/xlsx', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', Authorization: 'Bearer ' + token }, body });
+  assert.strictEqual((await post(student.token, Buffer.from('PK' + 'x'.repeat(200)))).status, 403);
+  assert.strictEqual((await post(adminToken, Buffer.from('not a spreadsheet '.repeat(20)))).status, 400);
+  const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('Competições');
+  ws.addRow(['Programa', 'Link', 'Descrição']);
+  ws.addRow(['Olimpíada de Upload', 'https://example.org/upload', 'Competição gratuita para estudantes de escola pública']);
+  const buf = Buffer.from(await wb.xlsx.writeBuffer());
+  const r = await post(adminToken, buf);
+  assert.strictEqual(r.status, 200, await r.clone().text());
+});

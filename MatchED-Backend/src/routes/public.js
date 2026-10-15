@@ -22,7 +22,7 @@ router.get('/stats', (req, res) => {
 router.get('/partners/:code', (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   const p = readDatabase().partners.find(x => x.code === code);
-  if (!p) return res.status(404).json({ error: 'Código não encontrado' });
+  if (!p) return res.json({ found: false }); // unknown code: answer quietly, the site just shows no banner
   res.json({ code: p.code, name: p.name, type: p.type, city: p.city, state: p.state });
 });
 

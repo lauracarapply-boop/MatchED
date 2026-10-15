@@ -46,6 +46,11 @@ require('dotenv').config({ path: envPath });
     writeDatabase(db);
     console.log(`✅ Imported ${f}: ${log.by_destination.opportunities} live, ${log.by_destination.captured_opportunities} for review, ${log.by_destination.sources} sources, ${log.duplicate_rows} duplicates merged.`);
   }
+  if (files.length) {
+    const db = readDatabase();
+    const removed = require('../src/import/xlsxImporter').removeDemoOpportunities(db);
+    if (removed) { writeDatabase(db); console.log(`🧹 Removed ${removed} demo opportunities (real data is loaded).`); }
+  }
   console.log('\nNext: npm start  →  http://localhost:3000');
   console.log('Admin access: npm run create-admin -- you@email.com "a-strong-password"\n');
 })().catch(e => { console.error(e); process.exit(1); });

@@ -19,7 +19,7 @@ async function seedDatabase() {
   const user2Id = uuidv4();
 
   db.users.push({
-    id: user1Id, email: 'estudante@matched.demo', emailVerified: true,
+    id: user1Id, email: 'estudante@matched.demo', emailVerified: true, demo: true,
     passwordHash: await bcryptjs.hash('demo-matched-2026', 10),
     name: 'Ana (demo)', userPath: 'high-school', planType: 'explorer', reminderEmails: false,
     xpTotal: 1250, level: 4, currentStreak: 5,
@@ -27,7 +27,7 @@ async function seedDatabase() {
   });
 
   db.users.push({
-    id: user2Id, email: 'universitario@matched.demo', emailVerified: true,
+    id: user2Id, email: 'universitario@matched.demo', emailVerified: true, demo: true,
     passwordHash: await bcryptjs.hash('demo-matched-2026', 10),
     name: 'Rafa (demo)', userPath: 'college', planType: 'applicant', reminderEmails: false,
     xpTotal: 3400, level: 7, currentStreak: 12,
@@ -348,7 +348,8 @@ async function seedDatabase() {
     },
   ];
 
-  opps.forEach(o => db.opportunities.push({ id: uuidv4(), ...o }));
+  // demo: true marks example data with made-up dates; setup removes it once real sheets are imported
+  opps.forEach(o => db.opportunities.push({ id: uuidv4(), demo: true, ...o }));
 
   // ── Badges ─────────────────────────────────────────────
   const badges = [
@@ -416,6 +417,16 @@ async function seedDatabase() {
   });
 
   db.opportunities.forEach(o => { o.status = 'published'; o.active = true; o.updated_at = new Date().toISOString(); });
+
+  // Never leave accounts with a public password on a real server
+  const production = process.env.NODE_ENV === 'production';
+  if (production) {
+    const demoUsers = new Set(db.users.filter(u => u.demo).map(u => u.id));
+    for (const [name, rows] of Object.entries(db)) {
+      if (Array.isArray(rows) && name !== 'users') db[name] = rows.filter(r => !r || !demoUsers.has(r.userId));
+    }
+    db.users = db.users.filter(u => !demoUsers.has(u.id));
+  }
   writeDatabase(db);
 
   console.log('✅ Database seeded successfully!\n');
@@ -424,10 +435,18 @@ async function seedDatabase() {
   console.log(`  • Opportunities: ${db.opportunities.length}`);
   console.log(`  • Badges: ${db.badges.length}`);
   console.log(`  • Subscription Plans: ${db.subscriptionPlans.length}\n`);
+  if (production) { console.log('ℹ️  Production: demo accounts were not created.\n'); return; }
   console.log('👥 Test Accounts:');
   console.log('  Ensino médio: estudante@matched.demo / demo-matched-2026');
   console.log('  Universidade: universitario@matched.demo / demo-matched-2026\n');
 }
 
-if (require.main === module) seedDatabase().catch(e => { console.error(e); process.exit(1); });
+if (require.main === module) {
+  if (fs.existsSync(dbPath) && !process.argv.includes('--force')) {
+    console.error('⚠️  A database already exists at ' + dbPath + '. Seeding would ERASE it (students, quests, results).');
+    console.error('   If you really want to start over, run: npm run seed -- --force');
+    process.exit(1);
+  }
+  seedDatabase().catch(e => { console.error(e); process.exit(1); });
+}
 module.exports = { seedDatabase };

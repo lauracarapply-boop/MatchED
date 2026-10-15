@@ -6,7 +6,9 @@ const { latestProfile } = require('./profile');
 const PUBLIC_SCHOOL = ['publica_estadual', 'publica_municipal', 'publica_federal', 'particular_bolsista'];
 
 function impactStats(db, { userFilter } = {}) {
-  const users = db.users.filter(u => !userFilter || userFilter(u));
+  // Demo accounts and admins never count as students
+  const admins = new Set((process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map(e => e.trim()).filter(Boolean));
+  const users = db.users.filter(u => !u.demo && !admins.has(String(u.email || '').toLowerCase()) && (!userFilter || userFilter(u)));
   const ids = new Set(users.map(u => u.id));
   const profiles = users.map(u => latestProfile(db, u)).filter(Boolean);
   const withSchool = profiles.filter(p => p.schoolType);
