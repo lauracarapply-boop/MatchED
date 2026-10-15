@@ -1,0 +1,4 @@
+# Private spreadsheets with the opportunity database (never commit)
+data-import/*
+!data-import/README.md
+.DS_Store

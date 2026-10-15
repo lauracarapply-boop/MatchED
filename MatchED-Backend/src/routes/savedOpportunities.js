@@ -1,59 +1,42 @@
 const express = require('express');
-const { getCollection, readDatabase, writeDatabase, addToCollection, updateInCollection } = require('../database/db');
 const { v4: uuidv4 } = require('uuid');
+const { readDatabase, writeDatabase } = require('../database/db');
+const { requireSelf, requireAuth, ownsRecord } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/', (req, res) => {
-  try {
-    const { userId, opportunityId, saveType } = req.body;
-    const db = readDatabase();
-
-    const saved = {
-      id: uuidv4(),
-      userId,
-      opportunityId,
-      saveType,
-      status: 'pending',
-      notesFromUser: '',
-      savedDate: new Date().toISOString()
-    };
-
-    db.savedOpportunities.push(saved);
+// POST /api/saved-opportunities — save (no duplicates; re-saving restores a removed item)
+router.post('/', requireSelf, (req, res) => {
+  const { opportunityId, saveType } = req.body || {};
+  const db = readDatabase();
+  if (!db.opportunities.some(o => o.id === opportunityId)) return res.status(404).json({ error: 'Oportunidade não encontrada' });
+  const userId = req.targetUserId;
+  const existing = db.savedOpportunities.find(s => s.userId === userId && s.opportunityId === opportunityId);
+  if (existing) {
+    existing.status = 'pending';
     writeDatabase(db);
-
-    res.json(saved);
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    return res.json(existing);
   }
+  const saved = { id: uuidv4(), userId, opportunityId, saveType: saveType || 'manual', status: 'pending', notesFromUser: '', savedDate: new Date().toISOString() };
+  db.savedOpportunities.push(saved);
+  writeDatabase(db);
+  res.json(saved);
 });
 
-router.get('/', (req, res) => {
-  try {
-    const { userId } = req.query;
-    const db = readDatabase();
-    
-    const saved = db.savedOpportunities.filter(s => s.userId === userId);
-    res.json({ savedOpportunities: saved });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+router.get('/', requireSelf, (req, res) => {
+  const db = readDatabase();
+  res.json({ savedOpportunities: db.savedOpportunities.filter(s => s.userId === req.targetUserId) });
 });
 
-router.put('/:id', (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    
-    const updated = updateInCollection('savedOpportunities', id, { status });
-    if (!updated) {
-      return res.status(404).json({ error: 'Saved opportunity not found' });
-    }
-
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+router.put('/:id', requireAuth, (req, res) => {
+  const db = readDatabase();
+  const item = db.savedOpportunities.find(s => s.id === req.params.id);
+  if (!ownsRecord(req, item)) return res.status(404).json({ error: 'Item não encontrado' });
+  const { status, notesFromUser } = req.body || {};
+  if (['pending', 'removed'].includes(status)) item.status = status;
+  if (typeof notesFromUser === 'string') item.notesFromUser = notesFromUser.slice(0, 1000);
+  writeDatabase(db);
+  res.json(item);
 });
 
 module.exports = router;

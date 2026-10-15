@@ -5,9 +5,12 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node src/server.js",
+    "dev": "node --watch src/server.js",
     "seed": "node src/seed-data/seed.js",
-    "import:xlsx": "node scripts/import-xlsx.js"
+    "import:xlsx": "node scripts/import-xlsx.js",
+    "setup": "node scripts/setup.js",
+    "create-admin": "node scripts/create-admin.js",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -23,5 +26,8 @@
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.4",
     "uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

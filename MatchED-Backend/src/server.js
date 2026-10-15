@@ -1,81 +1,89 @@
+const cfg = require('./config');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
+const fs = require('fs');
 
 const { initializeDatabase } = require('./database/db');
-const authRoutes = require('./routes/auth');
-const usersRoutes = require('./routes/users');
-const opportunitiesRoutes = require('./routes/opportunities');
-const savedOpportunitiesRoutes = require('./routes/savedOpportunities');
-const questsRoutes = require('./routes/quests');
-const deadlinesRoutes = require('./routes/deadlines');
-const swipesRoutes = require('./routes/swipes');
-const adminRoutes = require('./routes/admin');
-const sourcesRoutes = require('./routes/sources');
-const capturedOpportunitiesRoutes = require('./routes/capturedOpportunities');
-const importRoutes = require('./routes/importRoutes');
-const captureRoutes = require('./routes/captureRoutes');
-const resultTrackingRoutes = require('./routes/resultTracking');
+const { requireAdmin } = require('./middleware/auth');
+const { startReminderJob } = require('./jobs/reminders');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.set('trust proxy', 1); // correct client IPs behind Railway/Netlify proxies
 
-// Middleware
-const ALLOWED_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:5500',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
+// ── CORS: the website's own origin plus any extra origins in CORS_ORIGINS ──
+const allowed = new Set([
+  cfg.FRONTEND_URL,
+  `http://localhost:${cfg.PORT}`, 'http://localhost:5501', 'http://127.0.0.1:5501',
+  ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
+]);
 app.use(cors({
-  origin: (origin, cb) => {
-    // Allow requests with no origin (mobile apps, curl, same-origin)
-    if (!origin) return cb(null, true);
-    if (ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.vercel.app') || origin.endsWith('.netlify.app'))) {
-      return cb(null, true);
-    }
-    cb(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
+  origin: (origin, cb) => (!origin || allowed.has(origin) ? cb(null, true) : cb(new Error('Origin not allowed by CORS'))),
 }));
-app.use(express.json());
 
-// Serve frontend
-const frontendPath = path.join(__dirname, '../../MatchED-Frontend');
-app.use(express.static(frontendPath));
+// ── Basic security headers ──
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+  next();
+});
+app.use(express.json({ limit: '200kb' }));
 
-// Initialize database
 initializeDatabase();
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/opportunities', opportunitiesRoutes);
-app.use('/api/saved-opportunities', savedOpportunitiesRoutes);
-app.use('/api/quests', questsRoutes);
-app.use('/api/deadlines', deadlinesRoutes);
-app.use('/api/swipes', swipesRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/sources', sourcesRoutes);
-app.use('/api/captured-opportunities', capturedOpportunitiesRoutes);
-app.use('/api/import', importRoutes);
-app.use('/api/capture', captureRoutes);
-app.use('/api/results', resultTrackingRoutes);
+// ── API ──
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/public', require('./routes/public'));
+app.use('/api/opportunities', require('./routes/opportunities'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/saved-opportunities', require('./routes/savedOpportunities'));
+app.use('/api/quests', require('./routes/quests'));
+app.use('/api/deadlines', require('./routes/deadlines'));
+app.use('/api/swipes', require('./routes/swipes'));
+app.use('/api/results', require('./routes/resultTracking'));
+app.use('/api/admin', require('./routes/admin'));
+// Admin-only tools (data pipeline)
+app.use('/api/sources', requireAdmin, require('./routes/sources'));
+app.use('/api/captured-opportunities', requireAdmin, require('./routes/capturedOpportunities'));
+app.use('/api/import', requireAdmin, require('./routes/importRoutes'));
+app.use('/api/capture', requireAdmin, require('./routes/captureRoutes'));
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.use('/api', (req, res) => res.status(404).json({ error: 'Rota não encontrada' }));
 
-// Fallback to frontend for any non-API route
+// ── Website (MatchED-Web) ──
+const webPath = path.join(__dirname, '../../MatchED-Web');
+app.use(express.static(webPath, {
+  setHeaders: (res, file) => {
+    if (file.endsWith('config.js') || file.endsWith('sw.js') || file.endsWith('.html')) res.set('Cache-Control', 'no-cache');
+  },
+}));
 app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  const index = path.join(webPath, 'index.html');
+  if (fs.existsSync(index)) return res.sendFile(index);
+  res.status(404).send('Website not found');
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log('\n🚀 MatchED Backend Server running on http://localhost:' + PORT);
-  console.log('📚 API available at http://localhost:' + PORT + '/api');
-  console.log('🔗 Health check: http://localhost:' + PORT + '/api/health\n');
+// ── Errors ──
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'JSON inválido' });
+  if (err.message === 'Origin not allowed by CORS') return res.status(403).json({ error: 'Origem não permitida' });
+  console.error(err);
+  res.status(500).json({ error: 'Erro interno' });
 });
+
+if (require.main === module) {
+  app.listen(cfg.PORT, () => {
+    console.log(`\n🚀 MatchED running at http://localhost:${cfg.PORT}`);
+    console.log(`   Admin e-mails: ${cfg.ADMIN_EMAILS.join(', ') || '(none — set ADMIN_EMAILS in .env)'}`);
+    console.log(`   E-mail: ${cfg.SMTP_CONFIGURED ? 'on' : 'off (codes are shown on screen in development)'}\n`);
+    startReminderJob();
+  });
+}
+
+module.exports = app;

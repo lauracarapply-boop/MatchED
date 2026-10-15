@@ -1,4 +1,4 @@
-const { readDatabase, writeDatabase, dbPath } = require('../database/db');
+const { writeDatabase, dbPath, emptyDatabase } = require('../database/db');
 const fs = require('fs');
 const path = require('path');
 const bcryptjs = require('bcryptjs');
@@ -12,30 +12,24 @@ async function seedDatabase() {
     console.log('🗑️  Cleared existing database');
   }
 
-  const db = {
-    users: [], highSchoolProfiles: [], collegeProfiles: [],
-    opportunities: [], savedOpportunities: [], swipeEvents: [],
-    applicationQuests: [], questTasks: [], deadlines: [],
-    badges: [], userBadges: [], notifications: [],
-    xpTransactions: [], resultTracking: [], subscriptionPlans: []
-  };
+  const db = emptyDatabase();
 
   // ── Users ──────────────────────────────────────────────
   const user1Id = uuidv4();
   const user2Id = uuidv4();
 
   db.users.push({
-    id: user1Id, email: 'laura@example.com',
-    password: await bcryptjs.hash('password123', 10),
-    name: 'Laura Oliveira', userPath: 'high-school', planType: 'explorer',
+    id: user1Id, email: 'estudante@matched.demo', emailVerified: true,
+    passwordHash: await bcryptjs.hash('demo-matched-2026', 10),
+    name: 'Ana (demo)', userPath: 'high-school', planType: 'explorer', reminderEmails: false,
     xpTotal: 1250, level: 4, currentStreak: 5,
     createdAt: new Date(Date.now() - 30 * 864e5).toISOString()
   });
 
   db.users.push({
-    id: user2Id, email: 'alex@example.com',
-    password: await bcryptjs.hash('password123', 10),
-    name: 'Alex Chen', userPath: 'college', planType: 'applicant',
+    id: user2Id, email: 'universitario@matched.demo', emailVerified: true,
+    passwordHash: await bcryptjs.hash('demo-matched-2026', 10),
+    name: 'Rafa (demo)', userPath: 'college', planType: 'applicant', reminderEmails: false,
     xpTotal: 3400, level: 7, currentStreak: 12,
     createdAt: new Date(Date.now() - 60 * 864e5).toISOString()
   });
@@ -43,18 +37,19 @@ async function seedDatabase() {
   // ── High School Profiles ────────────────────────────────
   db.highSchoolProfiles.push({
     id: uuidv4(), userId: user1Id,
-    grade: '11', school: 'Lincoln High School',
-    interests: ['leadership', 'international-relations', 'science'],
-    goals: ['attend-top-university', 'get-scholarship'],
-    gpa: '3.9', createdAt: new Date().toISOString()
+    gradeLevel: 'em2', school: 'Escola Estadual (demo)', schoolType: 'publica_estadual',
+    state: 'MG', englishLevel: 'intermediate', needsFunding: true, birthYear: new Date().getFullYear() - 16,
+    interests: ['leadership', 'international', 'science'],
+    goals: ['study-abroad', 'get-scholarship'],
+    createdAt: new Date().toISOString()
   });
 
   // ── College Profiles ────────────────────────────────────
   db.collegeProfiles.push({
     id: uuidv4(), userId: user2Id,
-    university: 'UC Berkeley', major: 'Computer Science',
-    careerInterests: ['software-engineering', 'ai', 'entrepreneurship'],
-    graduationYear: '2026', gpa: '3.7', createdAt: new Date().toISOString()
+    university: 'UFMG (demo)', major: 'Ciência da Computação', state: 'MG', schoolType: 'publica_federal',
+    interests: ['technology', 'entrepreneurship', 'research'], englishLevel: 'advanced',
+    graduationYear: '2028', createdAt: new Date().toISOString()
   });
 
   // ── Opportunities ───────────────────────────────────────
@@ -420,10 +415,8 @@ async function seedDatabase() {
     createdAt: new Date(Date.now() - 60 * 864e5).toISOString()
   });
 
-  fs.writeFileSync(
-    path.join(__dirname, '../../data/db.json'),
-    JSON.stringify(db, null, 2)
-  );
+  db.opportunities.forEach(o => { o.status = 'published'; o.active = true; o.updated_at = new Date().toISOString(); });
+  writeDatabase(db);
 
   console.log('✅ Database seeded successfully!\n');
   console.log('📊 Data Summary:');
@@ -432,8 +425,9 @@ async function seedDatabase() {
   console.log(`  • Badges: ${db.badges.length}`);
   console.log(`  • Subscription Plans: ${db.subscriptionPlans.length}\n`);
   console.log('👥 Test Accounts:');
-  console.log('  Laura (High School): laura@example.com / password123');
-  console.log('  Alex (College): alex@example.com / password123\n');
+  console.log('  Ensino médio: estudante@matched.demo / demo-matched-2026');
+  console.log('  Universidade: universitario@matched.demo / demo-matched-2026\n');
 }
 
-seedDatabase().catch(console.error);
+if (require.main === module) seedDatabase().catch(e => { console.error(e); process.exit(1); });
+module.exports = { seedDatabase };
