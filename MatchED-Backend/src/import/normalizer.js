@@ -46,7 +46,8 @@ const EDUCATION_MAP = {
 
 const OPP_TYPE_MAP = {
   'scholarship': 'scholarship', 'bolsa': 'scholarship', 'bolsa de estudo': 'scholarship',
-  'summer_program': 'summer_program', 'summer program': 'summer_program', 'programa de verão': 'summer_program',
+  'summer_program': 'summer_program', 'summer program': 'summer_program',
+  'summer_school': 'summer_program', 'summer school': 'summer_program', 'programa de verão': 'summer_program',
   'competition': 'competition', 'competição': 'competition', 'concurso': 'competition',
   'internship': 'internship', 'estágio': 'internship', 'estagio': 'internship',
   'fellowship': 'fellowship',
@@ -62,11 +63,15 @@ const OPP_TYPE_MAP = {
   'workshop': 'workshop',
   'online_course': 'online_course', 'online course': 'online_course', 'curso online': 'online_course',
   'exam': 'career_program',
+  'job': 'job', 'emprego': 'job',
+  'volunteering': 'volunteer', 'voluntariado': 'volunteer',
+  'funding': 'grant', 'training': 'workshop',
+  'graduate_program': 'graduate_program', 'graduate program': 'graduate_program',
 };
 
 function normalizeList(raw, map) {
   if (!raw) return [];
-  return raw.split(/[,;\/]/)
+  return String(raw).split(/[,;\/]/)
     .map(s => s.trim().toLowerCase())
     .filter(Boolean)
     .map(s => map[s] || map[s.replace(/_/g, ' ')] || s)
@@ -85,10 +90,24 @@ function normalizeOpportunityTypes(raw) {
   return normalizeList(raw, OPP_TYPE_MAP);
 }
 
-function normalizeBoolean(val) {
+// Blank or unreadable values (e.g. Excel's '#########' overflow) fall back to the default.
+function normalizeBoolean(val, fallback = true) {
   if (typeof val === 'boolean') return val;
-  if (typeof val === 'string') return val.toUpperCase() === 'TRUE' || val === '1' || val === 'yes';
-  return Boolean(val);
+  if (typeof val === 'number') return val !== 0;
+  if (typeof val === 'string') {
+    const v = val.trim().toUpperCase();
+    if (['TRUE', 'VERDADEIRO', 'SIM', 'YES', '1'].includes(v)) return true;
+    if (['FALSE', 'FALSO', 'NÃO', 'NAO', 'NO', '0'].includes(v)) return false;
+  }
+  return fallback;
+}
+
+// Only keep values that are actually links ("Apply Here", "Link" etc. become '')
+function normalizeUrl(val) {
+  const v = (val == null ? '' : String(val)).trim();
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(v)) return 'https://' + v;
+  return '';
 }
 
 function normalizeNumber(val, fallback = null) {
@@ -98,6 +117,7 @@ function normalizeNumber(val, fallback = null) {
 
 function normalizeSourceScope(raw) {
   if (!raw) return null;
+  raw = String(raw);
   const map = {
     'recurring_source': 'recurring_source',
     'category_source': 'category_source',
@@ -110,6 +130,7 @@ function normalizeSourceScope(raw) {
 
 function normalizeReviewStatus(raw) {
   if (!raw) return null;
+  raw = String(raw);
   const map = {
     'ready': 'ready',
     'needs_review': 'needs_review',
@@ -123,12 +144,14 @@ function normalizeReviewStatus(raw) {
 
 function normalizeTrustTier(raw) {
   if (!raw) return 'observation';
+  raw = String(raw);
   const map = { 'priority': 'priority', 'approved': 'approved', 'observation': 'observation', 'blocked': 'blocked' };
   return map[raw.trim().toLowerCase()] || 'observation';
 }
 
 function normalizeCheckFrequency(raw) {
   if (!raw) return 'weekly';
+  raw = String(raw);
   const map = {
     'daily': 'daily', 'every_3_days': 'every_3_days', 'weekly': 'weekly',
     'monthly': 'monthly', 'manual': 'manual', 'never': 'never',
@@ -138,21 +161,21 @@ function normalizeCheckFrequency(raw) {
 
 function normalizeRow(row) {
   return {
-    name: (row.name || '').trim(),
-    base_url: (row.base_url || '').trim(),
-    monitored_url: (row.monitored_url || '').trim(),
-    source_type: (row.source_type || 'official').trim().toLowerCase(),
+    name: String(row.name || '').trim(),
+    base_url: normalizeUrl(row.base_url),
+    monitored_url: normalizeUrl(row.monitored_url),
+    source_type: String(row.source_type || 'official').trim().toLowerCase(),
     focus_areas: normalizeFocusAreas(row.focus_areas),
     education_levels: normalizeEducationLevels(row.education_levels),
     opportunity_types: normalizeOpportunityTypes(row.opportunity_types),
     trust_tier: normalizeTrustTier(row.trust_tier),
     reliability_score: normalizeNumber(row.reliability_score, 70),
     check_frequency: normalizeCheckFrequency(row.check_frequency),
-    extraction_method: (row.extraction_method || 'html').trim().toLowerCase(),
-    active: normalizeBoolean(row.active !== undefined ? row.active : true),
+    extraction_method: String(row.extraction_method || 'html').trim().toLowerCase(),
+    active: normalizeBoolean(row.active, true),
     source_scope: normalizeSourceScope(row.source_scope),
     review_status: normalizeReviewStatus(row.review_status),
-    notes: (row.notes || '').trim(),
+    notes: String(row.notes || '').trim(),
   };
 }
 
@@ -163,4 +186,5 @@ module.exports = {
   normalizeOpportunityTypes,
   normalizeBoolean,
   normalizeNumber,
+  normalizeUrl,
 };

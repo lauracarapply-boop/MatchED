@@ -1,279 +1,177 @@
 const express = require('express');
-const { readDatabase, writeDatabase } = require('../database/db');
 const { v4: uuidv4 } = require('uuid');
+const { readDatabase, writeDatabase } = require('../database/db');
+const { optionalAuth, requireAuth, requireSelf } = require('../middleware/auth');
+const { computeMatch, deadlineInfo } = require('../lib/eligibility');
+const { publicOpp, isLive } = require('../lib/opportunities');
+const { matchingProfile, sanitizeProfileInput } = require('../lib/profile');
+const { rateLimit } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
-// Normalize any string for comparison (lowercase, spaces)
-function norm(s) {
-  return (s || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+function haystack(o) {
+  return [o.programName, o.organizationName, o.description, o.eligibility, ...(o.tags || [])].join(' ').toLowerCase();
 }
 
-// User interest → relevant topic keywords (works with any tag format)
-const INTEREST_TOPICS = {
-  'leadership':            ['leadership', 'civic', 'social impact', 'community', 'government', 'politics', 'public policy'],
-  'research':              ['research', 'lab', 'science', 'stem', 'academic', 'investigation', 'study'],
-  'technology':            ['technology', 'tech', 'coding', 'software', 'programming', 'computer', 'engineering', 'stem', 'ai', 'robotics', 'data'],
-  'business':              ['business', 'marketing', 'entrepreneurship', 'finance', 'economics', 'commerce', 'management', 'startup'],
-  'science':               ['science', 'stem', 'biology', 'chemistry', 'physics', 'math', 'research', 'biomedical', 'space', 'astronomy'],
-  'arts':                  ['arts', 'art', 'music', 'design', 'creative', 'visual', 'humanities', 'writing', 'literature', 'film', 'theater', 'dance'],
-  'policy':                ['policy', 'government', 'civic', 'law', 'political', 'international relations', 'diplomacy', 'public'],
-  'engineering':           ['engineering', 'stem', 'tech', 'robotics', 'computer', 'mechanical', 'electrical', 'software', 'aerospace'],
-  'medicine':              ['medicine', 'health', 'medical', 'biomedical', 'biology', 'research', 'nursing', 'pharmacy', 'clinical'],
-  'law':                   ['law', 'policy', 'civic', 'human rights', 'legal', 'justice'],
-  'environment':           ['environment', 'climate', 'sustainability', 'ecology', 'conservation', 'green', 'energy'],
-  'social impact':         ['social impact', 'community', 'development', 'humanitarian', 'diversity', 'inclusion', 'nonprofit', 'volunteer'],
-  'social-impact':         ['social impact', 'community', 'development', 'humanitarian', 'diversity', 'inclusion', 'nonprofit', 'volunteer'],
-  'entrepreneurship':      ['entrepreneurship', 'business', 'startup', 'innovation', 'venture', 'tech'],
-  'mathematics':           ['mathematics', 'math', 'stem', 'competition', 'olympiad', 'statistics', 'calculus'],
-  'international':         ['international', 'global', 'exchange', 'cultural', 'diplomacy', 'abroad', 'foreign'],
-  'international-relations': ['international', 'global', 'policy', 'diplomacy', 'relations', 'geopolitics'],
-  'software-engineering':  ['software', 'engineering', 'coding', 'programming', 'tech', 'computer', 'development'],
-  'ai':                    ['ai', 'machine learning', 'data science', 'artificial intelligence', 'tech', 'stem', 'computer'],
-  'journalism':            ['journalism', 'writing', 'media', 'communication', 'press', 'arts', 'reporting'],
-  'design':                ['design', 'arts', 'creative', 'visual', 'ux', 'graphics', 'architecture'],
-  'psychology':            ['psychology', 'social science', 'neuroscience', 'behavior', 'mental health'],
-  'economics':             ['economics', 'finance', 'business', 'social science', 'policy'],
-  'history':               ['history', 'humanities', 'social science', 'cultural', 'archaeology'],
-  'literature':            ['literature', 'writing', 'humanities', 'arts', 'language', 'linguistics'],
-  'communication':         ['communication', 'journalism', 'writing', 'media', 'arts', 'public speaking'],
-  'finance':               ['finance', 'economics', 'business', 'banking', 'investment', 'accounting'],
-  'sports':                ['sports', 'athletics', 'physical', 'fitness', 'health'],
-  'humanitarian':          ['humanitarian', 'social impact', 'development', 'community', 'relief', 'refugee'],
-};
-
-// Goal → opportunity characteristics that match
-const GOAL_CATEGORIES = {
-  'get-scholarship':       ['scholarship', 'fellowship', 'full scholarship', 'funded', 'bolsa'],
-  'attend-top-university': ['summer program', 'summer school', 'prestigious', 'ivy', 'mit', 'stanford', 'yale', 'harvard', 'oxford', 'cambridge'],
-  'get-internship':        ['internship', 'job', 'work', 'professional'],
-  'do-research':           ['research', 'lab', 'research program', 'investigation'],
-  'go-abroad':             ['exchange', 'international', 'abroad', 'study abroad', 'foreign'],
-  'build-skills':          ['workshop', 'course', 'online course', 'mentorship', 'training', 'bootcamp'],
-  'give-back':             ['volunteering', 'community', 'social impact', 'humanitarian', 'nonprofit'],
-  'get-job':               ['internship', 'job', 'career', 'professional', 'work'],
-  'network':               ['conference', 'summit', 'networking', 'mentorship', 'leadership'],
-  'win-competition':       ['competition', 'olympiad', 'challenge', 'contest', 'award', 'prize'],
-};
-
-// Extract minimum GPA from eligibility text
-function extractGpaReq(eligibility) {
-  if (!eligibility) return null;
-  const m = eligibility.match(/GPA\s+(?:of\s+)?(\d+\.?\d*)\+?/i)
-         || eligibility.match(/(\d+\.?\d*)\s*\+?\s*GPA/i)
-         || eligibility.match(/minimum\s+GPA[:\s]+(\d+\.?\d*)/i);
-  return m ? parseFloat(m[1]) : null;
+// Shared filtering used by the public explorer and the eligibility check.
+function applyFilters(list, q) {
+  let out = list;
+  if (q.q) {
+    const terms = String(q.q).toLowerCase().split(/\s+/).filter(Boolean);
+    out = out.filter(o => { const h = haystack(o); return terms.every(t => h.includes(t)); });
+  }
+  if (q.category && q.category !== 'all') out = out.filter(o => o.category === q.category);
+  if (q.level === 'high-school') out = out.filter(o => !o.education_levels.length ? o.audience !== 'college' : o.education_levels.some(l => ['high_school', 'middle_school'].includes(l)));
+  if (q.level === 'college') out = out.filter(o => !o.education_levels.length ? o.audience !== 'high-school' : o.education_levels.some(l => ['undergraduate', 'graduate', 'gap_year', 'young_professional'].includes(l)));
+  if (q.funded === '1') out = out.filter(o => o.flags.funded);
+  if (q.brazil === '1') out = out.filter(o => o.flags.brazilFocused);
+  if (q.publicSchool === '1') out = out.filter(o => o.flags.publicSchoolFriendly);
+  if (q.noFee === '1') out = out.filter(o => !o.flags.hasFee);
+  if (q.includeUSOnly !== '1') out = out.filter(o => !o.flags.requiresUSCitizenship);
+  if (q.open === '1') out = out.filter(o => deadlineInfo(o).status !== 'closed');
+  return out;
 }
 
-// Check if opp is eligible for user's education level
-function checkEduEligibility(opp, userPath) {
-  const levels = opp.education_levels || [];
-  const userLevel = userPath === 'high-school' ? 'high school' : 'undergraduate';
-  if (levels.length === 0) {
-    // Fall back to audience field
-    return !opp.audience || opp.audience === userPath || opp.audience === 'both';
+function sortList(list, sort) {
+  if (sort === 'deadline') {
+    const est = o => o.deadline_estimate ? Math.round((new Date(o.deadline_estimate) - Date.now()) / 86400000) : null;
+    // exact dates first, then estimated ones, then "no date", then closed
+    const rank = o => { const d = deadlineInfo(o); if (d.status === 'upcoming') return d.daysLeft; if (d.status === 'closed') return 30000; const e = est(o); return e != null ? 5000 + e : 10000; };
+    return list.sort((a, b) => rank(a) - rank(b));
   }
-  return levels.some(l => norm(l).includes(userLevel.split(' ')[0]) || norm(l) === 'both');
+  if (sort === 'match') return list.sort((a, b) => (b.computedScore || 0) - (a.computedScore || 0));
+  if (sort === 'recent') return list.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  return list;
 }
 
-// Count how many user interests align with opp topics
-function countInterestHits(userInterests, oppTopics) {
-  let hits = 0;
-  for (const interest of userInterests) {
-    const related = INTEREST_TOPICS[norm(interest)] || [norm(interest)];
-    const matched = related.some(rt => oppTopics.some(ot => ot.includes(rt) || rt.includes(ot)));
-    if (matched) hits++;
-  }
-  return hits;
+function page(list, q) {
+  const limit = Math.min(100, Math.max(1, Number(q.limit) || 24));
+  const offset = Math.max(0, Number(q.offset) || 0);
+  return { total: list.length, limit, offset, opportunities: list.slice(offset, offset + limit) };
 }
 
-// Count how many user goals align with opp
-function countGoalHits(userGoals, oppTopics, oppCategory, oppFundingType) {
-  let hits = 0;
-  const oppCatNorm = norm(oppCategory);
-  const oppFundNorm = norm(oppFundingType);
-  for (const goal of (userGoals || [])) {
-    const related = GOAL_CATEGORIES[goal] || [];
-    const matched = related.some(r =>
-      oppCatNorm.includes(r) || oppFundNorm.includes(r) ||
-      oppTopics.some(t => t.includes(r) || r.includes(t))
-    );
-    if (matched) hits++;
+// GET /api/opportunities — public explorer (no login needed). With a login,
+// results also carry a personal match score.
+router.get('/', optionalAuth, (req, res) => {
+  const db = readDatabase();
+  let list = db.opportunities.filter(isLive).map(o => publicOpp(o));
+  list = applyFilters(list, req.query);
+  if (req.user) {
+    const profile = matchingProfile(db, req.user);
+    list = list.map(o => ({ ...o, ...computeMatch(o, profile) }));
   }
-  return hits;
-}
+  res.json(page(sortList(list, req.query.sort || (req.user ? 'match' : 'deadline')), req.query));
+});
 
-function computeMatch(opp, userPath, userInterests, likedCategories, userProfile) {
-  let score = 0;
-  const reasons = [];
+// GET /api/opportunities/by-ids?ids=a,b,c — used by Saved/Quests/Results/Deadlines
+router.get('/by-ids', optionalAuth, (req, res) => {
+  const ids = String(req.query.ids || '').split(',').filter(Boolean).slice(0, 300);
+  const set = new Set(ids);
+  const db = readDatabase();
+  res.json({ opportunities: db.opportunities.filter(o => set.has(o.id)).map(o => publicOpp(o)) });
+});
 
-  // Build normalized topic set from all opp text fields
-  const rawTopics = [
-    ...(opp.tags || []),
-    ...(opp.focus_areas || []),
-    opp.category || '',
-    opp.opportunity_types ? (Array.isArray(opp.opportunity_types) ? opp.opportunity_types.join(' ') : opp.opportunity_types) : '',
-    opp.programName || opp.title || '',
-    opp.organizationName || opp.organization || '',
-  ];
-  const oppTopics = [...new Set(rawTopics.map(norm).filter(Boolean))];
+// GET /api/opportunities/match/:userId — personal feed, best matches first,
+// without the ones the student already swiped.
+router.get('/match/:userId', requireSelf, (req, res) => {
+  const db = readDatabase();
+  const user = db.users.find(u => u.id === req.targetUserId);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  const profile = matchingProfile(db, user);
+  const swiped = new Set(db.swipeEvents.filter(s => s.userId === user.id).map(s => s.opportunityId));
+  const liked = new Set(db.swipeEvents.filter(s => s.userId === user.id && s.action === 'like')
+    .map(s => (db.opportunities.find(o => o.id === s.opportunityId) || {}).category).filter(Boolean));
+  let list = db.opportunities.filter(o => isLive(o) && !swiped.has(o.id)).map(o => publicOpp(o));
+  list = applyFilters(list, { ...req.query, includeUSOnly: '0' });
+  list = list.map(o => ({ ...o, ...computeMatch(o, profile, { likedCategories: liked }) }))
+    .filter(o => o.deadlineStatus !== 'closed' || req.query.includeClosed === '1');
+  list.sort((a, b) => (b.eligible - a.eligible) || (b.computedScore - a.computedScore));
+  const limit = Math.min(300, Number(req.query.limit) || 150);
+  res.json({ opportunities: list.slice(0, limit), total: list.length });
+});
 
-  // 1. EDUCATION ELIGIBILITY (20 pts, or cap at 15 if wrong level)
-  const eligible = checkEduEligibility(opp, userPath);
-  if (eligible) {
-    score += 20;
-    reasons.push('eligible');
-  } else {
-    // Opp targets different path — still show but heavily deprioritize
-    return { computedScore: Math.max(5, Math.floor(Math.random() * 12) + 5), matchReasons: ['low-match'] };
-  }
-
-  // 2. INTEREST ALIGNMENT (up to 40 pts)
-  const interestHits = countInterestHits(userInterests, oppTopics);
-  if (interestHits >= 3)      { score += 40; reasons.push('interests'); }
-  else if (interestHits === 2) { score += 30; reasons.push('interests'); }
-  else if (interestHits === 1) { score += 16; reasons.push('interests'); }
-  // 0 hits → no interest bonus
-
-  // 3. GOAL ALIGNMENT (up to 20 pts)
-  const profile = userProfile || {};
-  const userGoals = profile.goals || profile.careerInterests || [];
-  const goalHits = countGoalHits(userGoals, oppTopics, opp.category, opp.fundingType);
-  if (goalHits >= 2)      { score += 20; reasons.push('goals'); }
-  else if (goalHits === 1) { score += 12; reasons.push('goals'); }
-
-  // 4. GPA / ACADEMIC FIT (up to 10 pts)
-  const userGpa = parseFloat(profile.gpa) || 0;
-  const reqGpa = extractGpaReq(opp.eligibility);
-  if (reqGpa) {
-    if (userGpa >= reqGpa) { score += 10; reasons.push('gpa-fit'); }
-    else if (userGpa > 0)  { score -= 8; } // below requirement
-  } else {
-    score += 5; // no GPA barrier — open access
-  }
-
-  // 5. BEHAVIORAL SIGNALS — liked similar category before (10 pts)
-  if (likedCategories.has(opp.category)) {
-    score += 10;
-    reasons.push('liked');
-  }
-
-  // 6. DEADLINE URGENCY (reason flag only)
-  if (opp.deadline) {
-    const daysLeft = Math.ceil((new Date(opp.deadline) - new Date()) / 86400000);
-    if (daysLeft > 0 && daysLeft <= 14) reasons.push('urgent');
-  }
-
-  return {
-    computedScore: Math.min(99, Math.max(8, score)),
-    matchReasons: reasons,
+// POST /api/opportunities/check — "Isso vale pra mim?" Anonymous eligibility check.
+// Takes a mini-profile, returns matching opportunities. Logs an anonymous event
+// (no personal data) so the team can measure the funnel.
+router.post('/check', rateLimit({ windowMs: 60_000, max: 30 }), optionalAuth, (req, res) => {
+  const body = req.body || {};
+  const profile = {
+    userPath: body.userPath === 'college' ? 'college' : 'high-school',
+    ...sanitizeProfileInput(body),
   };
-}
-
-// POST /api/opportunities/submit — any logged-in user submits an opportunity for review
-router.post('/submit', (req, res) => {
-  try {
-    const { userId, ...oppData } = req.body;
-    const db = readDatabase();
-    const user = db.users.find(u => u.id === userId);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-    if (!db.pendingOpportunities) db.pendingOpportunities = [];
-
-    const pending = {
-      id: uuidv4(),
-      ...oppData,
-      submittedBy: userId,
-      submittedByName: user.name,
-      submittedByEmail: user.email,
-      submittedAt: new Date().toISOString(),
-      status: 'pending',
-    };
-
-    db.pendingOpportunities.push(pending);
-    writeDatabase(db);
-    res.json({ success: true, pending });
-  } catch {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  const db = readDatabase();
+  let list = db.opportunities.filter(isLive).map(o => publicOpp(o));
+  list = list.map(o => ({ ...o, ...computeMatch(o, profile) }))
+    .filter(o => o.eligible && o.deadlineStatus !== 'closed');
+  list.sort((a, b) => b.computedScore - a.computedScore);
+  const counts = {
+    eligible: list.length,
+    funded: list.filter(o => o.flags.funded).length,
+    brazil: list.filter(o => o.flags.brazilFocused).length,
+    closingSoon: list.filter(o => {
+      const d = o.daysLeft !== null && o.daysLeft !== undefined ? o.daysLeft
+        : (o.deadline_estimate ? Math.round((new Date(o.deadline_estimate) - Date.now()) / 86400000) : null);
+      return d !== null && d >= 0 && d <= 30;
+    }).length,
+  };
+  db.checkEvents.push({
+    id: uuidv4(), at: new Date().toISOString(), loggedIn: Boolean(req.user),
+    userPath: profile.userPath, gradeLevel: profile.gradeLevel || null, schoolType: profile.schoolType || null,
+    state: profile.state || null, results: counts.eligible, ref: String(body.ref || '').slice(0, 40) || null,
+  });
+  if (db.checkEvents.length > 20000) db.checkEvents.splice(0, db.checkEvents.length - 20000);
+  writeDatabase(db);
+  res.json({ counts, opportunities: list.slice(0, Math.min(30, Number(body.limit) || 12)) });
 });
 
-// Must be before /:id
-router.get('/match/:userId', (req, res) => {
-  try {
-    const { userId } = req.params;
-    const db = readDatabase();
-
-    const user = db.users.find(u => u.id === userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const profile = user.userPath === 'high-school'
-      ? db.highSchoolProfiles.slice().reverse().find(p => p.userId === userId)
-      : db.collegeProfiles.slice().reverse().find(p => p.userId === userId);
-
-    const userInterests = profile
-      ? (profile.interests || profile.careerInterests || [])
-      : [];
-
-    const swipeLikes = (db.swipeEvents || []).filter(s => s.userId === userId && s.action === 'like');
-    const likedCategories = new Set(
-      swipeLikes.map(s => (db.opportunities.find(o => o.id === s.opportunityId) || {}).category).filter(Boolean)
-    );
-
-    const opportunities = db.opportunities.map(opp => {
-      const { computedScore, matchReasons } = computeMatch(opp, user.userPath, userInterests, likedCategories, profile);
-      return { ...opp, computedScore, matchReasons };
-    });
-
-    opportunities.sort((a, b) => b.computedScore - a.computedScore);
-
-    res.json({ opportunities });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+// POST /api/opportunities/submit — a logged-in student suggests an opportunity.
+router.post('/submit', requireAuth, (req, res) => {
+  const b = req.body || {};
+  if (!b.programName || !/^https?:\/\//i.test(b.websiteUrl || '')) {
+    return res.status(400).json({ error: 'Informe o nome e o link oficial (começando com https://).' });
   }
+  const allowed = ['programName', 'organizationName', 'description', 'category', 'audience', 'fundingType', 'modality',
+    'deadline', 'eligibility', 'location', 'duration', 'websiteUrl', 'tags', 'competitionLevel'];
+  const data = {};
+  for (const k of allowed) if (b[k] !== undefined) data[k] = typeof b[k] === 'string' ? b[k].slice(0, 4000) : b[k];
+  if (!Array.isArray(data.tags)) data.tags = [];
+  const db = readDatabase();
+  const pending = {
+    id: uuidv4(), ...data,
+    submittedBy: req.user.id, submittedByName: req.user.name, submittedByEmail: req.user.email,
+    submittedAt: new Date().toISOString(), status: 'pending',
+  };
+  db.pendingOpportunities.push(pending);
+  writeDatabase(db);
+  res.json({ success: true, pending });
 });
 
-router.get('/search', (req, res) => {
-  try {
-    const { category, audience, type } = req.query;
-    const db = readDatabase();
-    let filtered = db.opportunities;
-
-    if (category) filtered = filtered.filter(o => o.category === category);
-    if (audience) filtered = filtered.filter(o => o.audience === audience);
-    if (type) filtered = filtered.filter(o => o.opportunityType === type);
-
-    res.json({ opportunities: filtered });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+// POST /api/opportunities/:id/report — anyone can flag a problem (broken link,
+// wrong deadline, not open to Brazilians...). Goes to the admin queue.
+const REPORT_REASONS = ['broken_link', 'wrong_deadline', 'not_for_brazilians', 'requires_payment', 'wrong_info', 'other'];
+router.post('/:id/report', rateLimit({ windowMs: 60_000, max: 10 }), optionalAuth, (req, res) => {
+  const db = readDatabase();
+  const opp = db.opportunities.find(o => o.id === req.params.id);
+  if (!opp) return res.status(404).json({ error: 'Oportunidade não encontrada' });
+  const reason = REPORT_REASONS.includes(req.body && req.body.reason) ? req.body.reason : 'other';
+  db.opportunityReports.push({
+    id: uuidv4(), opportunityId: opp.id, opportunityName: opp.programName || opp.title, reason,
+    note: String((req.body && req.body.note) || '').slice(0, 500),
+    userId: req.user ? req.user.id : null, status: 'open', createdAt: new Date().toISOString(),
+  });
+  writeDatabase(db);
+  res.json({ ok: true });
 });
 
-router.get('/', (req, res) => {
-  try {
-    const { limit = 20 } = req.query;
-    const db = readDatabase();
-    const opportunities = db.opportunities.slice(0, parseInt(limit));
-    res.json({ opportunities });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-router.get('/:id', (req, res) => {
-  try {
-    const { id } = req.params;
-    const db = readDatabase();
-    const opportunity = db.opportunities.find(o => o.id === id);
-
-    if (!opportunity) {
-      return res.status(404).json({ error: 'Opportunity not found' });
-    }
-
-    res.json(opportunity);
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+// GET /api/opportunities/:id — public detail (full description).
+router.get('/:id', optionalAuth, (req, res) => {
+  const db = readDatabase();
+  const opp = db.opportunities.find(o => o.id === req.params.id);
+  if (!opp) return res.status(404).json({ error: 'Oportunidade não encontrada' });
+  let out = publicOpp(opp, { full: true });
+  if (req.user) out = { ...out, ...computeMatch(out, matchingProfile(db, req.user)) };
+  res.json(out);
 });
 
 module.exports = router;
+module.exports.REPORT_REASONS = REPORT_REASONS;

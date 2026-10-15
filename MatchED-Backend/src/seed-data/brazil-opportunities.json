@@ -1,0 +1,544 @@
+{
+  "about": "Curated opportunities open to Brazilian students, researched for MatchED on 2026-10-15. Each entry links to the official site; dates come from the 2026 (or latest found) edition and are shown on the site as estimates for the next cycle. Re-check every year. Import with: npm run import:br",
+  "verifiedAt": "2026-10-15",
+  "opportunities": [
+    {
+      "id": "br-obmep",
+      "programName": "OBMEP — Olimpíada Brasileira de Matemática das Escolas Públicas",
+      "organizationName": "IMPA",
+      "category": "competition",
+      "description": "A maior olimpíada de matemática do Brasil, feita para estudantes de escola pública. Gratuita. A primeira fase é uma prova de 20 questões na própria escola; a segunda é uma prova escrita. Medalhistas podem entrar no Programa de Iniciação Científica Jr. (PIC), com bolsa.",
+      "eligibility": "Estudantes de escola pública do 6º ano do ensino fundamental ao 3º ano do ensino médio. A inscrição é feita pela escola: peça para a coordenação inscrever a sua.",
+      "requirements": [
+        "Escola inscrita pela coordenação",
+        "Prova da 1ª fase na escola"
+      ],
+      "websiteUrl": "https://www.obmep.org.br",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "mathematics",
+        "science"
+      ],
+      "fundingType": "free",
+      "location": "Brasil (na sua escola)",
+      "modality": "in-person",
+      "deadline_text": "Inscrição pela escola, geralmente até meados de março",
+      "last_known_deadline": "2026-03-16",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": false,
+        "openInternational": false
+      },
+      "verification_source": "https://www.itatiaia.com.br/educacao/inscricoes-para-a-obmep-2026-terminam-no-dia-16-deste-mes-veja-como-participar/"
+    },
+    {
+      "id": "br-oba",
+      "programName": "OBA — Olimpíada Brasileira de Astronomia e Astronáutica",
+      "organizationName": "Sociedade Astronômica Brasileira",
+      "category": "competition",
+      "description": "Olimpíada gratuita de astronomia e astronáutica, com prova aplicada na escola. Os melhores colocados podem ser convidados para seletivas de olimpíadas internacionais e jornadas espaciais.",
+      "eligibility": "Estudantes do ensino fundamental e médio de escolas públicas e particulares. A escola inscreve os alunos.",
+      "requirements": [
+        "Escola inscrita",
+        "Prova única na escola"
+      ],
+      "websiteUrl": "http://www.oba.org.br",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "science",
+        "research"
+      ],
+      "fundingType": "free",
+      "location": "Brasil (na sua escola)",
+      "modality": "in-person",
+      "deadline_text": "Inscrição pela escola, geralmente até o início de maio; prova em meados de maio",
+      "last_known_deadline": "2026-05-01",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": false
+      },
+      "verification_source": "https://conexaoto.com.br/2026/04/06/inscricoes-abertas-para-oba-e-obafog-2026-participacao-gratuita-aproxima-ciencia-das-escolas"
+    },
+    {
+      "id": "br-obafog",
+      "programName": "OBAFOG — Olimpíada Brasileira de Foguetes",
+      "organizationName": "Sociedade Astronômica Brasileira",
+      "category": "competition",
+      "description": "Equipes constroem e lançam foguetes (de canudo, água com vinagre ou garrafa PET, conforme o nível). Gratuita e feita na escola, junto com a OBA.",
+      "eligibility": "Equipes de estudantes do 6º ao 9º ano ou do ensino médio, inscritas pela escola.",
+      "requirements": [
+        "Equipe inscrita pela escola",
+        "Lançamento registrado até a data da prova da OBA"
+      ],
+      "websiteUrl": "http://www.oba.org.br",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "science",
+        "engineering"
+      ],
+      "fundingType": "free",
+      "location": "Brasil (na sua escola)",
+      "modality": "in-person",
+      "deadline_text": "Inscrição pela escola até o início de maio; lançamentos até meados de maio",
+      "last_known_deadline": "2026-05-01",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": false
+      },
+      "verification_source": "https://conexaoto.com.br/2026/04/06/inscricoes-abertas-para-oba-e-obafog-2026-participacao-gratuita-aproxima-ciencia-das-escolas"
+    },
+    {
+      "id": "br-onc",
+      "programName": "ONC — Olimpíada Nacional de Ciências",
+      "organizationName": "Olimpíada Nacional de Ciências",
+      "category": "competition",
+      "description": "Olimpíada que junta biologia, física, química, astronomia e história da ciência em uma prova só. Tem duas fases e a inscrição é feita pela escola.",
+      "eligibility": "Estudantes do ensino fundamental e médio. Peça a um professor para inscrever a sua escola.",
+      "requirements": [
+        "Escola inscrita por um professor responsável"
+      ],
+      "websiteUrl": "https://www.onciencias.org",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "science",
+        "research"
+      ],
+      "location": "Brasil",
+      "modality": "online",
+      "deadline_text": "Inscrição pela escola, geralmente até o início de agosto",
+      "last_known_deadline": "2026-08-10",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "englishRequired": false
+      },
+      "verification_source": "https://www.vestibulandoweb.com.br/ensino/olimpiada-nacional-de-ciencias-2026-recebe-inscricoes-ate-10-de-agosto/"
+    },
+    {
+      "id": "br-obf",
+      "programName": "OBF — Olimpíada Brasileira de Física",
+      "organizationName": "Sociedade Brasileira de Física",
+      "category": "competition",
+      "description": "Olimpíada de física em três fases (a primeira online, as outras presenciais). Os melhores colocados podem ir para as seletivas das olimpíadas internacionais de física.",
+      "eligibility": "Estudantes do 6º ano do ensino fundamental ao 3º ano do ensino médio (e 4º ano do técnico) que ainda não entraram na faculdade. Há taxa de participação, inclusive em escola pública; a escola pode pagar pelos alunos. Se sua escola não estiver inscrita, dá para se inscrever individualmente.",
+      "requirements": [
+        "Taxa de participação (valor no site oficial)",
+        "Inscrição pela escola ou individual"
+      ],
+      "websiteUrl": "https://www.fisica.org.br/v1/olimpiada/2026/",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "science",
+        "mathematics",
+        "engineering"
+      ],
+      "location": "Brasil",
+      "modality": "hybrid",
+      "deadline_text": "Confira o calendário no site oficial",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": false,
+        "funded": false,
+        "hasFee": true,
+        "englishRequired": false
+      },
+      "verification_source": "https://app.graxaim.org/obf/2026/ga/pub/regulamento_obf_2026.pdf"
+    },
+    {
+      "id": "br-obr",
+      "programName": "OBR — Olimpíada Brasileira de Robótica",
+      "organizationName": "OBR / RoboCup Brasil",
+      "category": "competition",
+      "description": "Gratuita, com duas modalidades: teórica (prova na escola) e prática (equipes montam robôs de resgate, apresentações artísticas ou simulação virtual). No ensino médio, a nota pode contar para vagas olímpicas em universidades públicas.",
+      "eligibility": "Estudantes de escolas públicas e particulares do ensino fundamental, médio e técnico integrado. O professor inscreve os alunos.",
+      "requirements": [
+        "Inscrição feita por um professor",
+        "Modalidade prática: equipe e robô"
+      ],
+      "websiteUrl": "https://obr.robocup.org.br/",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "technology",
+        "engineering",
+        "science"
+      ],
+      "fundingType": "free",
+      "location": "Brasil",
+      "modality": "hybrid",
+      "deadline_text": "Prática: inscrições até o fim de abril. Teórica: até meados de junho",
+      "last_known_deadline": "2026-06-12",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": false
+      },
+      "verification_source": "https://agencia.fapesp.br/olimpiada-brasileira-de-robotica-2026-esta-com-inscricoes-abertas/57500"
+    },
+    {
+      "id": "br-obb",
+      "programName": "OBB — Olimpíada Brasileira de Biologia",
+      "organizationName": "Instituto Butantan",
+      "category": "competition",
+      "description": "Olimpíada de biologia para o ensino médio, com três fases. Os inscritos recebem uma formação gratuita antes das provas.",
+      "eligibility": "Estudantes do ensino médio de qualquer idade, de escolas públicas e particulares. A escola faz a inscrição e indica um professor responsável.",
+      "requirements": [
+        "Escola inscrita com professor responsável"
+      ],
+      "websiteUrl": "https://obb-sistema.butantan.gov.br/login",
+      "education_levels": [
+        "high_school"
+      ],
+      "tags": [
+        "science",
+        "medicine",
+        "research"
+      ],
+      "location": "Brasil",
+      "modality": "online",
+      "deadline_text": "Inscrição pela escola, geralmente até o fim de fevereiro",
+      "last_known_deadline": "2026-02-25",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "englishRequired": false
+      },
+      "verification_source": "https://www.educamaisbrasil.com.br/educacao/noticias/butantan-lanca-22-olimpiada-brasileira-de-biologia-2026"
+    },
+    {
+      "id": "br-onhb",
+      "programName": "ONHB — Olimpíada Nacional em História do Brasil",
+      "organizationName": "Unicamp",
+      "category": "competition",
+      "description": "Olimpíada de história feita em equipe, online, ao longo de várias semanas, com tarefas e análise de documentos. Estudantes de escola pública que se destacam podem receber bolsa de Iniciação Científica Júnior.",
+      "eligibility": "Equipes de 3 estudantes do 8º e 9º ano do ensino fundamental ou do ensino médio, orientadas por um professor. Equipes de escola pública não pagam a inscrição.",
+      "requirements": [
+        "Equipe de 3 estudantes + 1 professor",
+        "Isenção de taxa para escola pública"
+      ],
+      "websiteUrl": "https://www.olimpiadadehistoria.com.br",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "policy",
+        "social-impact",
+        "research"
+      ],
+      "fundingType": "free",
+      "location": "Brasil",
+      "modality": "online",
+      "deadline_text": "Inscrições geralmente de março a abril",
+      "last_known_deadline": "2024-04-26",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": false
+      },
+      "verification_source": "https://www.blogdovestibular.com/?p=79090"
+    },
+    {
+      "id": "br-obq",
+      "programName": "OBQ — Olimpíada Brasileira de Química",
+      "organizationName": "Associação Brasileira de Química",
+      "category": "competition",
+      "description": "Olimpíada de química organizada em fases estaduais e nacional. Os melhores podem chegar às seletivas da olimpíada internacional de química.",
+      "eligibility": "Estudantes do ensino médio (e, em alguns estados, do fundamental). As regras, taxas e datas variam por estado: veja a página do seu estado no site oficial.",
+      "requirements": [
+        "Fase estadual (regras do seu estado)"
+      ],
+      "websiteUrl": "https://obquimica.org",
+      "education_levels": [
+        "high_school"
+      ],
+      "tags": [
+        "science",
+        "research"
+      ],
+      "location": "Brasil",
+      "modality": "in-person",
+      "deadline_text": "Datas variam por estado — confira no site oficial",
+      "flags": {
+        "brazilFocused": true,
+        "englishRequired": false
+      },
+      "verification_source": "https://obquimica.org"
+    },
+    {
+      "id": "br-obi",
+      "programName": "OBI — Olimpíada Brasileira de Informática",
+      "organizationName": "Unicamp / Sociedade Brasileira de Computação",
+      "category": "competition",
+      "description": "Olimpíada de lógica e programação, com modalidades para quem nunca programou (iniciação) e para quem já programa. Os melhores podem representar o Brasil na olimpíada internacional de informática.",
+      "eligibility": "Estudantes do ensino fundamental e médio de escolas públicas e particulares. A escola se cadastra e inscreve os alunos.",
+      "requirements": [
+        "Escola cadastrada no site da OBI"
+      ],
+      "websiteUrl": "https://olimpiada.ic.unicamp.br",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "technology",
+        "mathematics"
+      ],
+      "location": "Brasil",
+      "modality": "online",
+      "deadline_text": "Confira o calendário no site oficial (provas geralmente no 1º semestre)",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "englishRequired": false
+      },
+      "verification_source": "https://abcdoabc.com.br/olimpiada-brasileira-de-informatica-recebe-inscricoes-ate-12-de-junho/"
+    },
+    {
+      "id": "br-solve-for-tomorrow",
+      "programName": "Solve for Tomorrow Brasil",
+      "organizationName": "Samsung",
+      "category": "competition",
+      "description": "Desafio gratuito em que equipes de escola pública criam um projeto de ciência ou tecnologia para resolver um problema da sua comunidade, com mentorias e oficinas durante o processo.",
+      "eligibility": "Equipes de estudantes do ensino médio de escolas públicas (municipais, estaduais ou federais), inscritas por um professor da escola.",
+      "requirements": [
+        "Professor responsável faz a inscrição",
+        "Equipe da mesma escola"
+      ],
+      "websiteUrl": "https://solvefortomorrowbrasil.com.br",
+      "education_levels": [
+        "high_school"
+      ],
+      "tags": [
+        "science",
+        "technology",
+        "entrepreneurship",
+        "social-impact"
+      ],
+      "fundingType": "free",
+      "location": "Brasil",
+      "modality": "online",
+      "deadline_text": "Inscrições geralmente de abril a junho",
+      "last_known_deadline": "2026-06-30",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": false
+      },
+      "verification_source": "https://news.samsung.com/br/samsung-abre-inscricoes-para-a-13a-edicao-do-solve-for-tomorrow-brasil"
+    },
+    {
+      "id": "br-jovens-embaixadores",
+      "programName": "Jovens Embaixadores",
+      "organizationName": "Embaixada e Consulados dos EUA no Brasil",
+      "category": "exchange",
+      "description": "Intercâmbio de cerca de duas semanas nos Estados Unidos para estudantes de escola pública, com uma semana de preparação em Brasília, formação em liderança e projetos de impacto social. Custos do programa cobertos.",
+      "eligibility": "Estudantes do ensino médio da rede pública, de 15 a 18 anos, com bom desempenho escolar, conhecimento de inglês, liderança e trabalho voluntário.",
+      "requirements": [
+        "Escola pública",
+        "15 a 18 anos",
+        "Inglês",
+        "Histórico de liderança ou voluntariado"
+      ],
+      "websiteUrl": "https://www.jovensembaixadores.org.br/",
+      "education_levels": [
+        "high_school"
+      ],
+      "tags": [
+        "international",
+        "leadership",
+        "social-impact"
+      ],
+      "fundingType": "full-scholarship",
+      "location": "Estados Unidos",
+      "modality": "in-person",
+      "deadline_text": "Inscrições geralmente até o início de setembro",
+      "last_known_deadline": "2024-09-03",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": true,
+        "ageRange": [
+          15,
+          18
+        ]
+      },
+      "verification_source": "https://jornaldebrasilia.com.br/brasilia/programa-jovens-embaixadores-tem-inscricoes-abertas-ate-3-9/"
+    },
+    {
+      "id": "br-prep-program",
+      "programName": "Prep Program — Graduação no Exterior",
+      "organizationName": "Fundação Estudar",
+      "category": "fellowship",
+      "description": "Preparação gratuita de cerca de 12 meses para se candidatar a faculdades no exterior: mentoria, preparação para SAT/ACT, oficinas de redação e entrevista, carta de recomendação e conversas com universidades.",
+      "eligibility": "Estudantes no último ano do ensino médio ou em ano sabático, com bom desempenho, inglês avançado e atividades extracurriculares, que ainda não estejam em faculdade.",
+      "requirements": [
+        "Último ano do ensino médio ou gap year",
+        "Inglês avançado",
+        "Atividades extracurriculares"
+      ],
+      "websiteUrl": "https://www.estudarfora.org.br/prep-program/",
+      "education_levels": [
+        "high_school",
+        "gap_year"
+      ],
+      "tags": [
+        "international",
+        "leadership"
+      ],
+      "fundingType": "free",
+      "location": "Online",
+      "modality": "online",
+      "deadline_text": "Inscrições geralmente até 1º de outubro",
+      "last_known_deadline": "2025-10-01",
+      "flags": {
+        "brazilFocused": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": true
+      },
+      "verification_source": "https://www.cnnbrasil.com.br/educacao/fundacao-estudar-abre-inscricoes-para-programa-de-graduacao-no-exterior/"
+    },
+    {
+      "id": "br-ismart",
+      "programName": "Ismart — Bolsas em escolas particulares",
+      "organizationName": "Ismart",
+      "category": "scholarship",
+      "description": "Bolsas integrais em escolas particulares de excelência para jovens de escola pública e baixa renda, com material, uniforme, ajuda de transporte e alimentação e acompanhamento até a faculdade.",
+      "eligibility": "Estudantes de escola pública do ensino fundamental II com renda familiar baixa (o limite e as séries de cada edital estão no site). Vagas em algumas cidades (como São Paulo, Rio de Janeiro e Belo Horizonte) e programas online.",
+      "requirements": [
+        "Escola pública",
+        "Renda familiar dentro do limite do edital",
+        "Provas, entrevista e visita"
+      ],
+      "websiteUrl": "https://www.ismart.org.br",
+      "education_levels": [
+        "middle_school"
+      ],
+      "tags": [
+        "leadership"
+      ],
+      "fundingType": "full-scholarship",
+      "location": "SP, RJ, MG e online",
+      "modality": "in-person",
+      "deadline_text": "Confira o edital do ano no site oficial",
+      "flags": {
+        "brazilFocused": true,
+        "publicSchoolFriendly": true,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": false
+      },
+      "verification_source": "https://www.ismart.org.br"
+    },
+    {
+      "id": "br-uwc",
+      "programName": "UWC — Ensino médio no exterior com bolsa",
+      "organizationName": "UWC Brasil",
+      "category": "scholarship",
+      "description": "Seleção brasileira para cursar os dois últimos anos do ensino médio (Bacharelado Internacional) em um dos colégios UWC pelo mundo. A maioria dos selecionados recebe bolsa parcial ou integral. Não é preciso falar outra língua para se candidatar.",
+      "eligibility": "Brasileiros (ou residentes no Brasil com RNE) com CPF próprio, no 1º ou 2º ano do ensino médio ou técnico, com 15 a 18 anos até 31 de agosto do ano de entrada.",
+      "requirements": [
+        "1º ou 2º ano do ensino médio",
+        "15 a 18 anos",
+        "CPF próprio"
+      ],
+      "websiteUrl": "https://br.uwc.org/en/eligibility-criteria/",
+      "education_levels": [
+        "high_school"
+      ],
+      "tags": [
+        "international",
+        "leadership",
+        "social-impact"
+      ],
+      "fundingType": "partial-scholarship",
+      "location": "Colégios UWC pelo mundo",
+      "modality": "in-person",
+      "deadline_text": "Inscrições geralmente do fim de julho ao início de setembro",
+      "flags": {
+        "brazilFocused": true,
+        "funded": true,
+        "englishRequired": false,
+        "requiresUSCitizenship": false,
+        "ageRange": [
+          15,
+          18
+        ]
+      },
+      "verification_source": "https://br.uwc.org/en/eligibility-criteria/"
+    },
+    {
+      "id": "br-john-locke",
+      "programName": "John Locke Essay Competition",
+      "organizationName": "John Locke Institute",
+      "category": "competition",
+      "description": "Concurso internacional de redação em inglês (até 2.000 palavras) sobre filosofia, política, economia, história, direito e outras áreas. Inscrição gratuita no prazo normal; os vencedores ganham bolsas para programas do instituto.",
+      "eligibility": "Estudantes de qualquer país com menos de 19 anos na data de entrega. Quem tem menos de 15 anos concorre na categoria Junior.",
+      "requirements": [
+        "Redação em inglês de até 2.000 palavras",
+        "Registro antes do prazo"
+      ],
+      "websiteUrl": "https://johnlockeinstitute.com/submit-essay",
+      "education_levels": [
+        "middle_school",
+        "high_school"
+      ],
+      "tags": [
+        "policy",
+        "law",
+        "arts",
+        "international"
+      ],
+      "fundingType": "free",
+      "location": "Online",
+      "modality": "online",
+      "deadline_text": "Registro geralmente até o fim de março; entrega até o fim de maio",
+      "last_known_deadline": "2026-03-31",
+      "flags": {
+        "openInternational": true,
+        "requiresUSCitizenship": false,
+        "requiresUSWorkAuth": false,
+        "funded": true,
+        "hasFee": false,
+        "englishRequired": true,
+        "brazilFocused": false
+      },
+      "verification_source": "https://johnlockeinstitute.com/submit-essay"
+    }
+  ]
+}
