@@ -183,3 +183,14 @@ button:focus-visible, a:focus-visible, .chip:focus-visible, select:focus-visible
 
 .dl-est { color: #fbbf24; }
 .dl-note { font-size: 12px; color: var(--text-3); margin-top: 4px; line-height: 1.4; }
+
+/* Privacy page */
+.privacy h2 { font-size: 17px; margin: 22px 0 6px; color: var(--text-1, #fff); }
+.privacy p { line-height: 1.6; color: var(--text-2, #cbd5e1); max-width: 720px; }
+.privacy-draft { display: inline-block; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(251,191,36,.12); color: #fbbf24; }
+.pub-foot-link, .signup-privacy a { color: #A3E635; }
+.signup-privacy { font-size: 12px; color: rgba(255,255,255,.55); margin: 2px 0 6px; line-height: 1.5; }
+.danger-zone { margin: 8px 20px 150px; padding: 16px; border: 1px solid rgba(248,113,113,.35); border-radius: 14px; }
+.danger-zone h3 { font-size: 14px; color: #fca5a5; margin-bottom: 6px; }
+.danger-zone p { font-size: 12px; color: rgba(255,255,255,.55); margin-bottom: 10px; line-height: 1.5; }
+.danger-zone .row { display: flex; gap: 8px; flex-wrap: wrap; }

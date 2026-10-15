@@ -249,7 +249,7 @@ function publicShell(active, inner) {
     </header>
     <main class="pub-main">${inner}</main>
     <footer class="pub-footer">
-      <div>${esc(N().home.disclaimer)}</div>
+      <div>${esc(N().home.disclaimer)} · <a href="#/privacidade" class="pub-foot-link">${lang.current === 'pt' ? 'Privacidade' : 'Privacy'}</a></div>
       <div class="pub-lang">${['pt', 'en', 'es', 'fr'].map(l => `<button data-setlang="${l}" class="${lang.current === l ? 'active' : ''}">${l.toUpperCase()}</button>`).join('')}</div>
     </footer>
   </div>`;
@@ -673,6 +673,51 @@ function pageGlossary(el, rt) {
       <div id="gl-list" style="margin-top:14px;">${render('')}</div></section>`);
   bindPublicShell(el, () => pageGlossary(el, rt));
   el.querySelector('#gl-q').oninput = (e) => { el.querySelector('#gl-list').innerHTML = render(e.target.value.toLowerCase().trim()); };
+}
+
+
+/* ── Privacy (LGPD) ─────────────────────────────────────────────────
+   DRAFT written in plain language for 14–18-year-olds. Have it reviewed by
+   someone with legal training before the school pilot. */
+const PRIVACY = {
+  pt: {
+    title: 'Privacidade',
+    sub: 'O que o MatchED guarda sobre você, por quê, e como apagar. Versão de outubro de 2026.',
+    draft: 'Rascunho em revisão. Dúvidas: lauracar.apply@gmail.com',
+    sections: [
+      ['Resumo em 4 frases', 'Usamos seus dados só para mostrar oportunidades que valem pra você e lembrar seus prazos. Não vendemos nem compartilhamos seus dados pessoais com ninguém. Números de impacto são sempre agregados (nunca dizem quem é você). Você pode baixar ou apagar tudo a qualquer momento no seu Perfil.'],
+      ['O que guardamos', 'Conta: nome, e-mail e senha (guardada embaralhada, nem nós conseguimos ler). Perfil: ano escolar, tipo de escola, nome da escola (se você informar), estado, ano de nascimento, nível de inglês, se precisa de bolsa, objetivos e interesses. Uso: oportunidades que você curtiu, salvou ou planejou, suas tarefas e prazos, e os resultados que você mesmo registrar (por exemplo, se foi aprovado e o valor da bolsa).'],
+      ['“Isso vale pra mim?” sem conta', 'Quando você faz a consulta sem login, guardamos só as respostas gerais (ano escolar, tipo de escola, estado e quantas oportunidades apareceram), sem nome, e-mail ou qualquer dado que identifique você. Isso serve para medir se a ferramenta ajuda.'],
+      ['Para que usamos', 'Calcular quais oportunidades combinam com você; mandar lembretes de prazo por e-mail (dá para desligar no Perfil); medir o impacto do projeto em números agregados, como “quantos estudantes de escola pública começaram uma candidatura”. Se você chegou pelo link de uma escola parceira, a escola vê só números totais, nunca o seu nome.'],
+      ['Com quem dividimos', 'Com ninguém, para fins comerciais. Os dados ficam em servidores contratados para hospedar o site (hospedagem e envio de e-mail), que só os guardam para nós. Ao clicar no site oficial de uma oportunidade, você sai do MatchED e passa a valer a política daquele site.'],
+      ['Menores de 18 anos', 'O MatchED é feito para estudantes do ensino médio, então muitos usuários têm menos de 18 anos. Pedimos só o necessário para o match funcionar, nunca pedimos documentos, endereço ou telefone, e tratamos tudo pensando no seu melhor interesse. Se você tem menos de 18, mostre esta página para um responsável.'],
+      ['Seus direitos', 'Você pode ver, corrigir, baixar e apagar seus dados. Corrigir: em Perfil → Editar. Baixar: Perfil → “Baixar meus dados”. Apagar: Perfil → “Excluir minha conta”, que remove a conta e tudo ligado a ela de forma definitiva. Para qualquer outro pedido, escreva para o e-mail acima.'],
+      ['Cookies e armazenamento', 'Não usamos cookies de propaganda nem rastreadores. O site guarda no seu navegador apenas o login e o idioma escolhido.'],
+    ],
+  },
+  en: {
+    title: 'Privacy',
+    sub: 'What MatchED keeps about you, why, and how to delete it. October 2026 version.',
+    draft: 'Draft under review. Questions: lauracar.apply@gmail.com',
+    sections: [
+      ['Summary', 'We use your data only to show opportunities that fit you and to remind you of deadlines. We never sell or share your personal data. Impact numbers are always aggregated. You can download or delete everything at any time from your Profile.'],
+      ['What we keep', 'Account: name, e-mail and a scrambled password. Profile: school year, school type, school name (optional), state, birth year, English level, funding need, goals and interests. Activity: what you liked, saved or planned, your tasks and deadlines, and the results you record yourself.'],
+      ['Anonymous checks', 'The “Is this for me?” check without an account keeps only general answers (school year, school type, state, number of results), never anything that identifies you.'],
+      ['Your rights', 'You can see, fix, download and delete your data from your Profile. Deleting your account removes everything linked to it permanently.'],
+      ['Cookies', 'No advertising cookies or trackers. The site stores only your login and language in your browser.'],
+    ],
+  },
+};
+function pagePrivacy(el, rt) {
+  const P = PRIVACY[lang.current] || PRIVACY.en;
+  el.innerHTML = publicShell('privacidade', `
+    <section class="ex-wrap privacy">
+      <h1 class="pub-h1">${esc(P.title)}</h1>
+      <p class="muted">${esc(P.sub)}</p>
+      <p class="privacy-draft">${esc(P.draft)}</p>
+      ${P.sections.map(([h, t]) => `<h2>${esc(h)}</h2><p>${esc(t)}</p>`).join('')}
+    </section>`);
+  bindPublicShell(el, () => pagePrivacy(el, rt));
 }
 
 /* ── Brazilian onboarding / matching profile ───────────────────────── */

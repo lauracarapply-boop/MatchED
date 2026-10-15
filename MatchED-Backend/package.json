@@ -10,7 +10,8 @@
     "import:xlsx": "node scripts/import-xlsx.js",
     "setup": "node scripts/setup.js",
     "create-admin": "node scripts/create-admin.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "import:br": "node scripts/import-curated.js"
   },
   "keywords": [],
   "author": "",

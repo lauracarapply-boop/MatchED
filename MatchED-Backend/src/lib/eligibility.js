@@ -117,6 +117,9 @@ function detectFlags(opp) {
     const a = Number(m[1] || m[3]); const b = Number(m[2] || m[4]);
     if (a >= 8 && b <= 40 && a < b) flags.ageRange = [a, b];
   }
+  // Curated records (seed-data/brazil-opportunities.json) carry flags a person
+  // checked against the official page; those win over the text guesses.
+  if (opp.flags && typeof opp.flags === 'object') Object.assign(flags, opp.flags);
   return flags;
 }
 

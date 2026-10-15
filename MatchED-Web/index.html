@@ -810,7 +810,7 @@
   }
 
   const PAGES_WITH_NAV = ['discover', 'explore', 'saved', 'quests', 'deadlines', 'results', 'profile'];
-  const PUBLIC_PAGES = ['home', 'landing', 'check', 'explore', 'impact', 'glossary', 'login', 'signup', 'forgot-password', 'reset-password', 'verify-email-sent', 'language', 'o'];
+  const PUBLIC_PAGES = ['home', 'landing', 'check', 'explore', 'impact', 'glossary', 'login', 'signup', 'forgot-password', 'reset-password', 'verify-email-sent', 'language', 'o', 'privacidade'];
 
   // ═══════════════════════════════════════════
   // ROUTER
@@ -858,7 +858,7 @@
       }
 
       const pages = {
-        home: pageHome, landing: pageHome, check: pageCheck, explore: pageExplore, impact: pageImpact, glossary: pageGlossary,
+        home: pageHome, landing: pageHome, check: pageCheck, explore: pageExplore, impact: pageImpact, glossary: pageGlossary, privacidade: pagePrivacy,
         o: (el, rt) => pageOpportunity(el, rt, param),
         language: pageLangSelect,
         login: pageLogin, signup: pageSignup, 'verify-email-sent': pageVerifyEmailSent, 'forgot-password': pageForgotPassword, 'reset-password': pageResetPassword,
@@ -1098,6 +1098,7 @@
           <div class="form-group"><label>${tr.email}</label><input type="email" id="se" placeholder="${tr.emailPh}" required /></div>
           <div class="form-group"><label>${tr.password}</label><input type="password" id="sp" placeholder="${tr.passwordPh}" required minlength="8" autocomplete="new-password" /></div>
           <div id="serr" class="error-msg hidden"></div>
+          <p class="signup-privacy">${lang.current === 'pt' ? 'Ao criar a conta, você concorda com a nossa <a href="#/privacidade">política de privacidade</a>. Não vendemos seus dados.' : 'By signing up you agree to our <a href="#/privacidade">privacy policy</a>. We never sell your data.'}</p>
           <button type="submit" class="btn btn-primary" id="sbtn">${tr.btn}</button>
           <div style="display:flex;align-items:center;gap:10px;margin:4px 0;"><div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div><span style="font-size:12px;color:rgba(255,255,255,0.35);">ou</span><div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div></div>
           <div id="google-btn-signup" style="display:flex;justify-content:center;min-height:44px;"></div>
@@ -3396,12 +3397,40 @@
           <button class="btn btn-secondary" id="go-matching">${esc(N().profile.matching)}</button>
           <button class="btn btn-ghost" id="go-results">${esc(N().profile.results)}</button>
           <label class="toggle-line"><span>${esc(N().profile.reminders)}</span><input type="checkbox" id="rem-toggle" ${u.reminderEmails === false ? '' : 'checked'}/></label>
-          <button class="btn btn-ghost" id="go-submit-opp-prof" style="border-color:rgba(163,230,53,0.4);color:#A3E635;">+ Submit an Opportunity</button>
+          <button class="btn btn-ghost" id="go-submit-opp-prof" style="border-color:rgba(163,230,53,0.4);color:#A3E635;">${lang.current === 'pt' ? '+ Indicar uma oportunidade' : '+ Submit an Opportunity'}</button>
           <button class="btn btn-ghost" id="chpath">${tr.changePath}</button>
           <button class="btn btn-ghost" id="logout" style="color:var(--danger);border-color:var(--danger);">${tr.signOut}</button>
+        </div>
+        <div class="danger-zone">
+          <h3>${lang.current === 'pt' ? 'Seus dados' : 'Your data'}</h3>
+          <p>${lang.current === 'pt' ? 'Baixe tudo o que o MatchED guarda sobre você, ou apague sua conta para sempre.' : 'Download everything MatchED keeps about you, or delete your account for good.'} <a href="#/privacidade" style="color:#A3E635;">${lang.current === 'pt' ? 'Privacidade' : 'Privacy'}</a></p>
+          <div class="row">
+            <button class="btn btn-ghost btn-sm" id="data-export">${lang.current === 'pt' ? '⬇️ Baixar meus dados' : '⬇️ Download my data'}</button>
+            <button class="btn btn-ghost btn-sm" id="data-delete" style="color:var(--danger);border-color:var(--danger);">${lang.current === 'pt' ? 'Excluir minha conta' : 'Delete my account'}</button>
+          </div>
         </div>`;
 
       document.getElementById('logout').onclick = async () => { await state.clear(); rt.go('home'); };
+      document.getElementById('data-export').onclick = async () => {
+        try {
+          const data = await req('/users/' + state.user.id + '/export');
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'matched-meus-dados.json';
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        } catch (err) { toast(err.message, 'error'); }
+      };
+      document.getElementById('data-delete').onclick = async () => {
+        const pt = lang.current === 'pt';
+        const typed = prompt(pt ? 'Isso apaga sua conta, seu perfil, suas quests e seus resultados para sempre. Para confirmar, digite EXCLUIR:' : 'This permanently deletes your account, profile, quests and results. Type EXCLUIR to confirm:');
+        if (typed === null) return;
+        if (typed.trim().toUpperCase() !== 'EXCLUIR') { toast(pt ? 'Nada foi apagado.' : 'Nothing was deleted.', 'info'); return; }
+        try {
+          await req('/users/' + state.user.id, { method: 'DELETE', body: JSON.stringify({ confirm: 'EXCLUIR' }) });
+          await state.clear();
+          toast(pt ? 'Conta excluída. Seus dados foram apagados.' : 'Account deleted.', 'success', 5000);
+          rt.go('home');
+        } catch (err) { toast(err.message, 'error'); }
+      };
       document.getElementById('chpath').onclick = () => rt.go('onboarding');
       const adminBtn = document.getElementById('go-admin');
       if (adminBtn) adminBtn.onclick = () => rt.go('admin');

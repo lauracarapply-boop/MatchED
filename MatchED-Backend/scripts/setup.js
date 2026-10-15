@@ -51,6 +51,13 @@ require('dotenv').config({ path: envPath });
     const removed = require('../src/import/xlsxImporter').removeDemoOpportunities(db);
     if (removed) { writeDatabase(db); console.log(`🧹 Removed ${removed} demo opportunities (real data is loaded).`); }
   }
+  {
+    // Curated opportunities for Brazilian students (always loaded, safe to repeat)
+    const db = readDatabase();
+    const log = require('../src/import/curated').importCurated(db);
+    writeDatabase(db);
+    console.log(`✅ Curated Brazilian opportunities: ${log.added} added, ${log.updated} refreshed.`);
+  }
   console.log('\nNext: npm start  →  http://localhost:3000');
   console.log('Admin access: npm run create-admin -- you@email.com "a-strong-password"\n');
 })().catch(e => { console.error(e); process.exit(1); });

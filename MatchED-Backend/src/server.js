@@ -78,6 +78,15 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
+  // Keep the curated Brazilian opportunities that ship with the code up to date
+  // (safe to repeat; an admin's archive decision is kept).
+  try {
+    const { readDatabase, writeDatabase } = require('./database/db');
+    const db = readDatabase();
+    const log = require('./import/curated').importCurated(db);
+    writeDatabase(db);
+    if (log.added) console.log(`✅ Added ${log.added} curated Brazilian opportunities.`);
+  } catch (e) { console.error('Curated opportunities not loaded:', e.message); }
   app.listen(cfg.PORT, () => {
     console.log(`\n🚀 MatchED running at http://localhost:${cfg.PORT}`);
     console.log(`   Admin e-mails: ${cfg.ADMIN_EMAILS.join(', ') || '(none — set ADMIN_EMAILS in .env)'}`);

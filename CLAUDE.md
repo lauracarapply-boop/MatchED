@@ -37,6 +37,8 @@ npm start              # http://localhost:3000 (API under /api, website served f
   - `/api/admin/*` is admin only.
 - `src/jobs/reminders.js` — deadline e-mails 7 and 2 days before a deadline. Runs only when SMTP is configured.
 - `src/import/xlsxImporter.js` — spreadsheet import, with dedupe; rows without an official link go to `capturedOpportunities`.
+- `src/seed-data/brazil-opportunities.json` + `src/import/curated.js` — hand-checked opportunities for Brazilian students (olympiads, Jovens Embaixadores, Prep Program, UWC…). Loaded on every server start and by `npm run import:br`; fixed ids, safe to repeat, archives spreadsheet duplicates. Each entry keeps `verification_source`; re-check dates every year.
+- `GET /api/users/:id/export` and `DELETE /api/users/:id` (body `{"confirm":"EXCLUIR"}`) — LGPD data download and account deletion; the privacy page is `#/privacidade` (`pagePrivacy` in `tools.js`, a draft pending legal review).
 - `test/api.test.js` — API tests. Add a test for every bug fix.
 - `MatchED-Web/index.html` — the main SPA: hash router, student pages, admin panel.
 - `MatchED-Web/tools.js` — the newer public pages and shared tools:

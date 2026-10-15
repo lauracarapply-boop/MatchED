@@ -209,3 +209,57 @@ test('website scripts have no syntax errors', () => {
   for (const code of inline) assert.doesNotThrow(() => new Function(code), 'inline script in index.html');
   for (const f of ['tools.js', 'sw.js']) assert.doesNotThrow(() => new Function(fs.readFileSync(path.join(web, f), 'utf8')), f);
 });
+
+test('curated Brazilian opportunities: import is repeatable, archives duplicates, shows up for public-school students', async () => {
+  const { readDatabase, writeDatabase } = require('../src/database/db');
+  const { importCurated, loadCurated } = require('../src/import/curated');
+  const total = loadCurated().opportunities.length;
+  const db = readDatabase();
+  db.opportunities.push({ id: 'sheet-locke', programName: 'John Locke Essay Competition', websiteUrl: 'https://www.johnlockeinstitute.com/essay-competition', category: 'competition', status: 'published', active: true });
+  const first = importCurated(db);
+  assert.strictEqual(first.added, total);
+  assert.strictEqual(db.opportunities.find(o => o.id === 'sheet-locke').active, false, 'spreadsheet copy archived');
+  db.opportunities.find(o => o.id === 'br-ismart').status = 'archived';
+  db.opportunities.find(o => o.id === 'br-ismart').active = false;
+  const again = importCurated(db);
+  assert.strictEqual(again.added, 0);
+  assert.strictEqual(again.updated, total);
+  assert.strictEqual(db.opportunities.filter(o => o.id === 'br-obmep').length, 1);
+  assert.strictEqual(db.opportunities.find(o => o.id === 'br-ismart').active, false, 'admin archive decision kept');
+  writeDatabase(db);
+
+  for (const o of loadCurated().opportunities) assert.match(o.websiteUrl, /^https?:\/\//, o.id + ' has an official link');
+
+  const br = await call('GET', '/api/opportunities?brazil=1&limit=200');
+  const ids = br.data.opportunities.map(o => o.id);
+  assert.ok(ids.includes('br-obmep') && ids.includes('br-jovens-embaixadores'));
+  const uwc = br.data.opportunities.find(o => o.id === 'br-uwc');
+  assert.strictEqual(uwc.flags.requiresUSCitizenship, false, 'RNE wording must not read as US-only');
+
+  const check = await call('POST', '/api/opportunities/check', { body: { userPath: 'high-school', gradeLevel: 'em2', schoolType: 'publica_estadual', state: 'MG', birthYear: new Date().getFullYear() - 16, interests: ['mathematics'] } });
+  const found = check.data.opportunities.map(o => o.id);
+  assert.ok(found.includes('br-obmep'), 'OBMEP is shown to a public-school student');
+});
+
+test('a student can export and permanently delete their own data, and nobody else can', async () => {
+  const me = await signup('lgpd@test.dev');
+  const other = await signup('lgpd-other@test.dev');
+  await call('POST', '/api/quests', { token: me.token, body: { opportunityId: 'opp-br' } });
+  await call('POST', '/api/opportunities/opp-br/report', { token: me.token, body: { reason: 'wrong_info' } });
+  const exp = await call('GET', `/api/users/${me.user.id}/export`, { token: me.token });
+  assert.strictEqual(exp.status, 200);
+  assert.strictEqual(exp.data.account.email, 'lgpd@test.dev');
+  assert.ok(exp.data.applicationQuests.length >= 1);
+  assert.ok(!JSON.stringify(exp.data).includes('passwordHash'));
+  assert.strictEqual((await call('GET', `/api/users/${me.user.id}/export`, { token: other.token })).status, 403);
+  assert.strictEqual((await call('DELETE', `/api/users/${me.user.id}`, { token: other.token, body: { confirm: 'EXCLUIR' } })).status, 403);
+  assert.strictEqual((await call('DELETE', `/api/users/${me.user.id}`, { token: me.token, body: {} })).status, 400);
+  const del = await call('DELETE', `/api/users/${me.user.id}`, { token: me.token, body: { confirm: 'EXCLUIR' } });
+  assert.strictEqual(del.status, 200);
+  const { readDatabase } = require('../src/database/db');
+  const db = readDatabase();
+  assert.ok(!db.users.some(u => u.id === me.user.id));
+  assert.ok(!db.applicationQuests.some(q => q.userId === me.user.id));
+  assert.ok(!db.opportunityReports.some(r => r.userId === me.user.id));
+  assert.strictEqual((await call('GET', `/api/users/${me.user.id}`, { token: me.token })).status, 401, 'old login stops working');
+});

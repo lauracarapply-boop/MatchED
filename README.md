@@ -25,6 +25,8 @@ npm run create-admin -- you@email.com "a-long-password-here"
 
 Your e-mail must also be listed in `ADMIN_EMAILS` in `MatchED-Backend/.env`.
 
+**Curated Brazilian opportunities:** 16 hand-checked opportunities (OBMEP, OBA, OBR, ONHB, Jovens Embaixadores, Prep Program, UWC, Ismart…) live in `MatchED-Backend/src/seed-data/brazil-opportunities.json` and load automatically. Add new ones there, with the official link and the page you checked.
+
 **Demo accounts (local only):** `estudante@matched.demo` and `universitario@matched.demo`, password `demo-matched-2026`. They are never created in production.
 
 **Tests:** `cd MatchED-Backend && npm test`
@@ -57,6 +59,7 @@ Public (no account needed):
 - `#/o/<id>` — shareable page for one opportunity
 - `#/impact` — public impact numbers and how they are measured
 - `#/glossary` — 22 application terms explained in Portuguese (fee waiver, essay, recommendation letter…)
+- `#/privacidade` — privacy policy in plain language (draft; have it reviewed before the school pilot)
 
 For students with an account:
 
