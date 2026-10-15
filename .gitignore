@@ -2,3 +2,6 @@
 data-import/*
 !data-import/README.md
 .DS_Store
+
+# Personal Claude Code settings (may contain local commands and secrets)
+.claude/settings.local.json

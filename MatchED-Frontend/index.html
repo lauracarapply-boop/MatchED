@@ -943,7 +943,7 @@
     document.getElementById('gosignup').onclick = () => rt.go('signup');
     document.getElementById('go-forgot').onclick = () => rt.go('forgot-password');
     setTimeout(() => initGoogleButton('google-btn-login'), 300);
-    document.getElementById('demo1').onclick = () => { document.getElementById('le').value = 'lauracar.apply@gmail.com'; document.getElementById('lp').value = 'CARla$2609'; document.getElementById('lf').dispatchEvent(new Event('submit')); };
+    document.getElementById('demo1').onclick = () => { document.getElementById('le').value = ''; document.getElementById('lp').value = ''; document.getElementById('lf').dispatchEvent(new Event('submit')); };
     document.getElementById('go-submit-opp').onclick = () => {
       if (state.isLoggedIn()) { rt.go('submit-opp'); return; }
       pendingAction = 'submit-opp';

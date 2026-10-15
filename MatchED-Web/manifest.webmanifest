@@ -1,0 +1,14 @@
+{
+  "name": "MatchED — Bolsas e oportunidades",
+  "short_name": "MatchED",
+  "description": "Bolsas, programas e competições que valem pra você.",
+  "start_url": "/#/discover",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0B1A3E",
+  "theme_color": "#0B1A3E",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

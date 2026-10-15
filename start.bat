@@ -8,22 +8,18 @@ echo.
 
 cd /d "%~dp0MatchED-Backend"
 
-:: Install deps if needed
 if not exist "node_modules\" (
   echo Installing dependencies...
   call npm install
   if errorlevel 1 ( echo ERROR: npm install failed && pause && exit /b 1 )
 )
 
-:: Seed if no database yet
-if not exist "data\db.json" (
-  echo Seeding database with demo data...
-  call node src/seed-data/seed.js
-)
+:: Creates .env and the database, imports data-import\*.xlsx (safe to run every time)
+call npm run setup
 
 echo  Server starting at http://localhost:3000
 echo  Press Ctrl+C to stop
 echo.
-
+start http://localhost:3000
 node src/server.js
 pause
