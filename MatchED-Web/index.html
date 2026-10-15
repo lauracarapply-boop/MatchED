@@ -810,7 +810,7 @@
   }
 
   const PAGES_WITH_NAV = ['discover', 'explore', 'saved', 'quests', 'deadlines', 'results', 'profile'];
-  const PUBLIC_PAGES = ['home', 'landing', 'check', 'explore', 'impact', 'glossary', 'login', 'signup', 'forgot-password', 'reset-password', 'verify-email-sent', 'language', 'o', 'privacidade'];
+  const PUBLIC_PAGES = ['home', 'landing', 'check', 'explore', 'impact', 'glossary', 'login', 'signup', 'forgot-password', 'reset-password', 'verify-email-sent', 'language', 'o', 'privacidade', 'escola'];
 
   // ═══════════════════════════════════════════
   // ROUTER
@@ -820,6 +820,7 @@
     async go(page, opts = {}) {
       let param = null;
       if (page && page.startsWith('o/')) { param = decodeURIComponent(page.slice(2)); page = 'o'; }
+      else if (page && page.startsWith('escola/')) { param = page.slice(7); page = 'escola'; }
       if (page === 'landing') page = 'home';
       const requested = page;
       if (!state.isLoggedIn() && !PUBLIC_PAGES.includes(page)) page = 'login';
@@ -827,7 +828,7 @@
       const redirected = page !== requested;
       if (page === 'explore' && !state.isLoggedIn()) { /* public version */ }
       this.current = page;
-      const hash = '#/' + (page === 'o' ? 'o/' + encodeURIComponent(param) : page);
+      const hash = '#/' + (page === 'o' ? 'o/' + encodeURIComponent(param) : page === 'escola' ? 'escola/' + param : page);
       if (location.hash !== hash) {
         // A guard redirect replaces the URL so the forbidden page never stays in the address bar or history
         if (redirected || opts.fromHash) history.replaceState(null, '', hash);
@@ -860,6 +861,7 @@
       const pages = {
         home: pageHome, landing: pageHome, check: pageCheck, explore: pageExplore, impact: pageImpact, glossary: pageGlossary, privacidade: pagePrivacy,
         o: (el, rt) => pageOpportunity(el, rt, param),
+        escola: (el, rt) => pagePartnerDashboard(el, rt, param),
         language: pageLangSelect,
         login: pageLogin, signup: pageSignup, 'verify-email-sent': pageVerifyEmailSent, 'forgot-password': pageForgotPassword, 'reset-password': pageResetPassword,
         onboarding: pageOnboarding,
@@ -2635,6 +2637,7 @@
             <button class="adm-tab" data-tab="sources" style="padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);transition:all 0.15s;">${tr.tabSources}</button>
             <button class="adm-tab" data-tab="import" style="padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid rgba(163,230,53,0.3);background:rgba(163,230,53,0.07);color:#A3E635;transition:all 0.15s;">${tr.tabImport}</button>
             <button class="adm-tab" data-tab="metrics" style="padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid rgba(96,165,250,0.3);background:rgba(96,165,250,0.07);color:#60a5fa;transition:all 0.15s;">📊 ${tr.tabMetrics}</button>
+            <button class="adm-tab" data-tab="quality" style="padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid rgba(163,230,53,0.3);background:rgba(163,230,53,0.07);color:#A3E635;transition:all 0.15s;">✏️ ${esc(N().admin.quality)}</button>
             <button class="adm-tab" data-tab="reports" style="padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.07);color:#fca5a5;transition:all 0.15s;">⚑ ${esc(N().admin.reports)}</button>
             <button class="adm-tab" data-tab="partners" style="padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);transition:all 0.15s;">🏫 ${esc(N().admin.partners)}</button>
             <button class="adm-tab" data-tab="impact" style="padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid rgba(96,165,250,0.3);background:rgba(96,165,250,0.07);color:#60a5fa;transition:all 0.15s;">📈 ${esc(N().admin.impact)}</button>
@@ -3276,7 +3279,7 @@
         activeTab = tab.dataset.tab;
         document.querySelectorAll('.adm-tab').forEach(t => {
           const isActive = t.dataset.tab === activeTab;
-          const isGreen = ['add', 'import'].includes(t.dataset.tab);
+          const isGreen = ['add', 'import', 'quality'].includes(t.dataset.tab);
           const isBlue = t.dataset.tab === 'metrics';
           t.style.background = isActive ? 'rgba(255,255,255,0.12)' : (isGreen ? 'rgba(163,230,53,0.07)' : (isBlue ? 'rgba(96,165,250,0.07)' : 'rgba(255,255,255,0.04)'));
           t.style.color = isActive ? '#fff' : (isGreen ? '#A3E635' : (isBlue ? '#60a5fa' : 'rgba(255,255,255,0.6)'));
@@ -3288,6 +3291,7 @@
         else if (activeTab === 'sources') renderSources();
         else if (activeTab === 'import') renderImport();
         else if (activeTab === 'metrics') renderMetrics();
+        else if (activeTab === 'quality') renderAdminQuality(document.getElementById('adm-content')).catch(e => toast(e.message, 'error'));
         else if (activeTab === 'reports') renderAdminReports(document.getElementById('adm-content')).catch(e => toast(e.message, 'error'));
         else if (activeTab === 'partners') renderAdminPartners(document.getElementById('adm-content')).catch(e => toast(e.message, 'error'));
         else if (activeTab === 'impact') renderAdminImpact(document.getElementById('adm-content')).catch(e => toast(e.message, 'error'));

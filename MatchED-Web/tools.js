@@ -101,7 +101,8 @@ const NS = {
     deadlines: { exportAll: '📅 Baixar todos para a agenda', gcal: 'Google Agenda', didApply: 'Você enviou?', yes: 'Enviei', no: 'Não enviei', recorded: 'Registrado, obrigado!', emailOn: 'Lembretes por e-mail: ligados', emailOff: 'Lembretes por e-mail: desligados' },
     quests: { due: (d) => `até ${d}`, overdue: 'atrasada', undo: 'Desmarcar', results: '📊 Ver meus resultados' },
     profile: { matching: '🎯 Editar perfil de matching', reminders: 'Lembretes de prazo por e-mail', results: '📊 Meus resultados' },
-    admin: { reports: 'Reportes', partners: 'Escolas parceiras', impact: 'Impacto', noReports: 'Nenhum reporte aberto.', resolve: 'Resolvido', dismiss: 'Ignorar', open: 'Abrir oportunidade',
+    admin: { quality: 'Qualidade', qIssues: { no_description: 'Sem descrição', no_deadline: 'Sem prazo', nationality: 'Aceita brasileiros?' }, qHelp: 'Oportunidades no ar que os estudantes ainda não conseguem usar bem. As mais úteis (ensino médio, abertas a brasileiros, com bolsa) aparecem primeiro. Confira no site oficial, preencha e salve.', qDesc: 'Descrição em português (2–3 frases simples)', qDeadline: 'Prazo exato', qDeadlineText: 'Prazo em texto (ex.: “inscrições geralmente em março”)', qWho: 'Quem pode se inscrever', qWhoKeep: 'Não mudar', qWhoOpen: 'Aberta a estudantes de qualquer país', qWhoBR: 'Feita para brasileiros', qWhoUS: 'Só para residentes dos EUA (esconder)', qSave: 'Salvar', qArchive: 'Arquivar', qSaved: 'Salvo!', qDone: 'Nada pendente nesta fila. 🎉', qOfficial: 'Site oficial', qMore: 'Próximas 20', dash: 'Painel da escola', dashCopy: 'Copiar link do painel', dashRotate: 'Gerar novo link', dashRotated: 'Novo link gerado. O antigo parou de funcionar.', dashHelp: 'Link privado para a coordenação ver os números da escola. Não compartilhe publicamente.',
+      reports: 'Reportes', partners: 'Escolas parceiras', impact: 'Impacto', noReports: 'Nenhum reporte aberto.', resolve: 'Resolvido', dismiss: 'Ignorar', open: 'Abrir oportunidade',
       newPartner: 'Nova escola/organização', name: 'Nome', city: 'Cidade', type: 'Tipo', create: 'Criar link', link: 'Link de convite', qr: 'QR Code', copy: 'Copiar link', copied: 'Copiado!',
       signups: 'cadastros', checks: 'consultas', started: 'candidaturas', funnel: 'Funil', types: { escola: 'Escola', gremio: 'Grêmio', organizacao: 'Organização' } },
     tasks: {
@@ -157,7 +158,8 @@ const NS = {
     deadlines: { exportAll: '📅 Download all to calendar', gcal: 'Google Calendar', didApply: 'Did you apply?', yes: 'I applied', no: "I didn't", recorded: 'Recorded, thanks!', emailOn: 'E-mail reminders: on', emailOff: 'E-mail reminders: off' },
     quests: { due: (d) => `by ${d}`, overdue: 'overdue', undo: 'Undo', results: '📊 See my results' },
     profile: { matching: '🎯 Edit matching profile', reminders: 'Deadline reminders by e-mail', results: '📊 My results' },
-    admin: { reports: 'Reports', partners: 'Partner schools', impact: 'Impact', noReports: 'No open reports.', resolve: 'Resolved', dismiss: 'Dismiss', open: 'Open opportunity', newPartner: 'New school/organization', name: 'Name', city: 'City', type: 'Type', create: 'Create link', link: 'Invite link', qr: 'QR code', copy: 'Copy link', copied: 'Copied!', signups: 'sign-ups', checks: 'checks', started: 'applications', funnel: 'Funnel', types: { escola: 'School', gremio: 'Student union', organizacao: 'Organization' } },
+    admin: { quality: 'Quality', qIssues: { no_description: 'No description', no_deadline: 'No deadline', nationality: 'Open to Brazilians?' }, qHelp: 'Live opportunities students can’t use well yet. Most useful first. Check the official site, fill in and save.', qDesc: 'Description in Portuguese (2–3 simple sentences)', qDeadline: 'Exact deadline', qDeadlineText: 'Deadline as text', qWho: 'Who can apply', qWhoKeep: 'Keep as is', qWhoOpen: 'Open to students from any country', qWhoBR: 'Made for Brazilians', qWhoUS: 'US residents only (hide)', qSave: 'Save', qArchive: 'Archive', qSaved: 'Saved!', qDone: 'Nothing left in this queue. 🎉', qOfficial: 'Official site', qMore: 'Next 20', dash: 'School dashboard', dashCopy: 'Copy dashboard link', dashRotate: 'New link', dashRotated: 'New link created. The old one stopped working.', dashHelp: 'Private link for the school coordinator. Do not share publicly.',
+      reports: 'Reports', partners: 'Partner schools', impact: 'Impact', noReports: 'No open reports.', resolve: 'Resolved', dismiss: 'Dismiss', open: 'Open opportunity', newPartner: 'New school/organization', name: 'Name', city: 'City', type: 'Type', create: 'Create link', link: 'Invite link', qr: 'QR code', copy: 'Copy link', copied: 'Copied!', signups: 'sign-ups', checks: 'checks', started: 'applications', funnel: 'Funnel', types: { escola: 'School', gremio: 'Student union', organizacao: 'Organization' } },
     tasks: {},
   },
 };
@@ -801,6 +803,93 @@ async function renderAdminReports(c) {
   });
 }
 
+
+/* ── Admin: data-quality queue ─────────────────────────────────────── */
+const WHO_FLAGS = {
+  open: { openInternational: true, checkNationality: false, requiresUSCitizenship: false, requiresUSWorkAuth: false },
+  br: { brazilFocused: true, checkNationality: false, requiresUSCitizenship: false, requiresUSWorkAuth: false },
+  us: { requiresUSCitizenship: true, checkNationality: false, openInternational: false },
+};
+async function renderAdminQuality(c, issue = 'no_description', offset = 0) {
+  const A = N().admin;
+  c.innerHTML = '<div class="spinner"></div>';
+  const d = await req(`/admin/quality?issue=${encodeURIComponent(issue)}&offset=${offset}`);
+  const chips = Object.entries(A.qIssues).map(([k, l]) => `<button class="q-chip ${k === d.issue ? 'active' : ''}" data-issue="${k}">${esc(l)} <b>${d.counts[k]}</b></button>`).join('');
+  const card = o => `
+    <form class="adm-card q-card" data-id="${esc(o.id)}">
+      <div class="adm-title">${esc(o.programName)}</div>
+      <div class="adm-sub">${esc([o.organizationName, catName(o.category)].filter(Boolean).join(' · '))} ${safeUrl(o.websiteUrl) ? `· <a href="${esc(safeUrl(o.websiteUrl))}" target="_blank" rel="noopener" style="color:#A3E635;">${esc(A.qOfficial)} ↗</a>` : ''}</div>
+      <div class="lc-flags" style="margin-bottom:8px;">${flagChips(o, 4)}</div>
+      <label class="q-label">${esc(A.qDesc)}<textarea name="description" rows="3" maxlength="900">${esc(o.description || '')}</textarea></label>
+      <div class="q-row">
+        <label class="q-label">${esc(A.qDeadline)}<input type="date" name="deadline" value="${esc(String(o.deadline || '').slice(0, 10))}"/></label>
+        <label class="q-label" style="flex:2;">${esc(A.qDeadlineText)}<input type="text" name="deadline_text" maxlength="200" value="${esc(o.deadline_text || '')}"/></label>
+      </div>
+      <label class="q-label">${esc(A.qWho)}<select name="who"><option value="">${esc(A.qWhoKeep)}</option><option value="open">${esc(A.qWhoOpen)}</option><option value="br">${esc(A.qWhoBR)}</option><option value="us">${esc(A.qWhoUS)}</option></select></label>
+      <div class="md-row" style="justify-content:flex-start;">
+        <button class="btn btn-primary btn-sm" type="submit">${esc(A.qSave)}</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-archive>${esc(A.qArchive)}</button>
+      </div>
+    </form>`;
+  c.innerHTML = `
+    <p class="adm-sub" style="max-width:640px;">${esc(A.qHelp)}</p>
+    <div class="q-chips">${chips}</div>
+    ${d.opportunities.length ? d.opportunities.map(card).join('') : `<div class="adm-empty">${esc(A.qDone)}</div>`}
+    ${d.total > offset + 20 ? `<button class="btn btn-secondary btn-sm" id="q-more">${esc(A.qMore)}</button>` : ''}`;
+  c.querySelectorAll('[data-issue]').forEach(b => b.onclick = () => renderAdminQuality(c, b.dataset.issue, 0));
+  const more = c.querySelector('#q-more'); if (more) more.onclick = () => renderAdminQuality(c, d.issue, offset + 20);
+  const done = (form) => { form.style.opacity = '0.4'; form.style.pointerEvents = 'none'; toast(A.qSaved, 'success'); };
+  c.querySelectorAll('.q-card').forEach(form => {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const body = { description: fd.get('description').trim(), deadline_text: fd.get('deadline_text').trim() };
+      if (fd.get('deadline')) body.deadline = fd.get('deadline');
+      if (WHO_FLAGS[fd.get('who')]) body.flags = WHO_FLAGS[fd.get('who')];
+      try { await req('/admin/opportunities/' + encodeURIComponent(form.dataset.id), { method: 'PUT', body: JSON.stringify(body) }); done(form); }
+      catch (err) { toast(err.message, 'error'); }
+    };
+    form.querySelector('[data-archive]').onclick = async () => {
+      try { await req('/admin/opportunities/' + encodeURIComponent(form.dataset.id), { method: 'PUT', body: JSON.stringify({ active: false }) }); done(form); }
+      catch (err) { toast(err.message, 'error'); }
+    };
+  });
+}
+
+/* ── Partner school private dashboard (#/escola/CODE/TOKEN) ───────── */
+async function pagePartnerDashboard(el, rt, param) {
+  const pt = lang.current !== 'en';
+  const [code, token] = String(param || '').split('/');
+  el.innerHTML = publicShell('', '<section class="ex-wrap"><div class="spinner"></div></section>');
+  bindPublicShell(el, () => pagePartnerDashboard(el, rt, param));
+  let d;
+  try { d = await req(`/public/partners/${encodeURIComponent(code || '')}/dashboard?t=${encodeURIComponent(token || '')}`); }
+  catch { el.querySelector('.ex-wrap').innerHTML = `<h1 class="pub-h1">${pt ? 'Link inválido' : 'Invalid link'}</h1><p class="muted">${pt ? 'Peça um novo link para a equipe do MatchED.' : 'Ask the MatchED team for a new link.'}</p>`; return; }
+  const t = d.totals; const p = d.partner;
+  const invite = `${location.origin}/?ref=${encodeURIComponent(p.code)}#/check`;
+  const brl = v => v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR');
+  const box = (n, label) => `<div class="stat-box"><b>${esc(String(n))}</b><span>${esc(label)}</span></div>`;
+  const G = N().grades || {}; const I = N().interests || {};
+  el.querySelector('.ex-wrap').innerHTML = `
+    <h1 class="pub-h1">${esc(p.name)}</h1>
+    <p class="muted">${esc([p.city, p.state].filter(Boolean).join(' · '))} · ${pt ? 'Painel da escola parceira — atualizado' : 'Partner school dashboard — updated'} ${fmtDate(d.updatedAt)}</p>
+    <div class="stat-grid" style="margin:18px 0;">
+      ${box(t.checks, pt ? 'consultas “isso vale pra mim?”' : '“is this for me?” checks')}
+      ${box(t.students, pt ? 'estudantes cadastrados' : 'students signed up')}
+      ${box(t.applicationsStarted, pt ? 'candidaturas começadas' : 'applications started')}
+      ${box(t.applicationsSubmitted, pt ? 'candidaturas enviadas' : 'applications submitted')}
+      ${box(t.acceptances, pt ? 'aprovações registradas' : 'acceptances')}
+      ${box(brl(t.scholarshipBRL), pt ? 'em bolsas registradas' : 'in scholarships')}
+    </div>
+    ${d.byGrade ? `<h2 class="pub-h2">${pt ? 'Por ano escolar' : 'By school year'}</h2><ul class="dash-list">${Object.entries(d.byGrade).map(([k, v]) => `<li><span>${esc(G[k] || k)}</span><b>${esc(String(v))}</b></li>`).join('')}</ul>` : ''}
+    ${d.topInterests ? `<h2 class="pub-h2">${pt ? 'Interesses mais comuns' : 'Top interests'}</h2><ul class="dash-list">${d.topInterests.map(x => `<li><span>${esc(I[x.interest] || x.interest)}</span><b>${esc(String(x.students))}</b></li>`).join('')}</ul>` : ''}
+    <p class="muted small">${pt ? `Para proteger os estudantes, este painel mostra só totais. Grupos com menos de ${d.minGroup} pessoas aparecem como “<5”, e os detalhes só aparecem a partir de ${d.minGroup} cadastros.` : `To protect students this shows totals only; groups under ${d.minGroup} show as “<5”.`}</p>
+    <h2 class="pub-h2">${pt ? 'Divulgue para a turma' : 'Share with students'}</h2>
+    <div class="pt-link"><input readonly value="${esc(invite)}"/><button class="btn btn-ghost btn-sm" id="dash-copy">${pt ? 'Copiar link' : 'Copy link'}</button><button class="btn btn-primary btn-sm" id="dash-poster">🖨️ ${pt ? 'Cartaz com QR code' : 'QR poster'}</button></div>`;
+  el.querySelector('#dash-copy').onclick = async () => { try { await navigator.clipboard.writeText(invite); toast(pt ? 'Copiado!' : 'Copied!', 'success'); } catch {} };
+  el.querySelector('#dash-poster').onclick = async () => { await loadQrLib(); printPoster(p.name, invite); };
+}
+
 // QR codes are drawn locally (vendor/qrcode-generator.js, MIT) so they work offline and on school networks
 function loadQrLib() {
   if (window.qrcode) return Promise.resolve();
@@ -837,6 +926,7 @@ async function renderAdminPartners(c) {
   c.innerHTML = '<div class="spinner"></div>';
   const { partners } = await req('/admin/partners');
   const link = (code) => `${location.origin}/?ref=${encodeURIComponent(code)}#/check`;
+  const dashLink = (p) => `${location.origin}/#/escola/${encodeURIComponent(p.code)}/${encodeURIComponent(p.viewToken || '')}`;
   c.innerHTML = `
     <form class="adm-card" id="pt-form">
       <div class="adm-title">${esc(A.newPartner)}</div>
@@ -854,6 +944,12 @@ async function renderAdminPartners(c) {
         <div class="adm-sub">${esc(A.types[p.type] || p.type)} · ${esc(p.city || '')} ${esc(p.state || '')}</div>
         <div class="pt-stats"><b>${p.stats.students}</b> ${esc(A.signups)} · <b>${p.checks}</b> ${esc(A.checks)} · <b>${p.stats.applicationsStarted}</b> ${esc(A.started)}</div>
         <div class="pt-link"><input readonly value="${esc(link(p.code))}"/><button class="btn btn-ghost btn-sm" data-copy="${esc(link(p.code))}">${esc(A.copy)}</button><button class="btn btn-ghost btn-sm" data-qr="${esc(p.code)}">${esc(A.qr)}</button></div>
+        <div class="pt-dash"><span class="adm-sub">${esc(A.dashHelp)}</span>
+          <div class="md-row" style="justify-content:flex-start;">
+            <a class="btn btn-ghost btn-sm" target="_blank" href="${esc(dashLink(p))}">${esc(A.dash)} ↗</a>
+            <button class="btn btn-ghost btn-sm" data-copy="${esc(dashLink(p))}">${esc(A.dashCopy)}</button>
+            <button class="btn btn-ghost btn-sm" data-rotate="${esc(p.id)}">${esc(A.dashRotate)}</button>
+          </div></div>
         <div class="pt-qr" id="qr-${esc(p.code)}"></div>
       </div>`).join('')}`;
   c.querySelector('#pt-form').onsubmit = async (e) => {
@@ -862,6 +958,10 @@ async function renderAdminPartners(c) {
     try { await req('/admin/partners', { method: 'POST', body: JSON.stringify(fd) }); renderAdminPartners(c); }
     catch (err) { toast(err.message, 'error'); }
   };
+  c.querySelectorAll('[data-rotate]').forEach(b => b.onclick = async () => {
+    try { await req('/admin/partners/' + b.dataset.rotate + '/rotate', { method: 'POST', body: '{}' }); toast(A.dashRotated, 'success'); renderAdminPartners(c); }
+    catch (err) { toast(err.message, 'error'); }
+  });
   c.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); toast(A.copied, 'success'); } catch {} });
   c.querySelectorAll('[data-qr]').forEach(b => b.onclick = async () => {
     const box = c.querySelector('#qr-' + CSS.escape(b.dataset.qr));

@@ -2,7 +2,8 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { readDatabase, writeDatabase } = require('../database/db');
 const { requireAdmin, requireAuth } = require('../middleware/auth');
-const { publicOpp } = require('../lib/opportunities');
+const crypto = require('crypto');
+const { publicOpp, isLive } = require('../lib/opportunities');
 const { impactStats } = require('../lib/metrics');
 
 const router = express.Router();
@@ -14,7 +15,11 @@ router.use(requireAdmin);
 
 const EDITABLE = ['programName', 'organizationName', 'description', 'category', 'audience', 'fundingType', 'modality',
   'deadline', 'eligibility', 'location', 'duration', 'websiteUrl', 'tags', 'competitionLevel', 'active', 'fundingAmount',
-  'description_pt', 'eligibility_pt'];
+  'description_pt', 'eligibility_pt', 'deadline_text', 'flags'];
+
+// Flags an admin can set by hand after checking the official page. They win over text detection.
+const FLAG_KEYS = ['requiresUSCitizenship', 'requiresUSWorkAuth', 'checkNationality', 'openInternational',
+  'brazilFocused', 'publicSchoolFriendly', 'funded', 'hasFee', 'englishRequired'];
 
 function pickEditable(body = {}) {
   const out = {};
@@ -23,6 +28,16 @@ function pickEditable(body = {}) {
   if (out.programName) out.title = out.programName;
   if (out.organizationName !== undefined) out.organization = out.organizationName;
   if (out.websiteUrl) out.url = out.websiteUrl;
+  if (out.deadline !== undefined) {
+    if (out.deadline === '' || out.deadline === null) out.deadline = null;
+    else if (!/^\d{4}-\d{2}-\d{2}/.test(String(out.deadline))) delete out.deadline;
+  }
+  if (out.deadline_text !== undefined) out.deadline_text = String(out.deadline_text || '').slice(0, 200) || null;
+  if (out.flags !== undefined) {
+    const f = {};
+    if (out.flags && typeof out.flags === 'object') for (const k of FLAG_KEYS) if (typeof out.flags[k] === 'boolean') f[k] = out.flags[k];
+    out.flags = f;
+  }
   return out;
 }
 
@@ -53,9 +68,13 @@ router.put('/opportunities/:id', (req, res) => {
   const db = readDatabase();
   const opp = db.opportunities.find(o => o.id === req.params.id);
   if (!opp) return res.status(404).json({ error: 'Não encontrada' });
-  Object.assign(opp, pickEditable(req.body), { updated_at: new Date().toISOString() });
+  const data = pickEditable(req.body);
+  if (data.flags) data.flags = { ...(opp.flags || {}), ...data.flags };
+  if (data.active === false) data.status = 'archived';
+  if (data.active === true && opp.status === 'archived') data.status = 'published';
+  Object.assign(opp, data, { updated_at: new Date().toISOString(), reviewed_at: new Date().toISOString(), reviewed_by: req.user.email });
   writeDatabase(db);
-  res.json(opp);
+  res.json(publicOpp(opp, { full: true }));
 });
 
 router.delete('/opportunities/:id', (req, res) => {
@@ -65,6 +84,30 @@ router.delete('/opportunities/:id', (req, res) => {
   db.opportunities.splice(idx, 1);
   writeDatabase(db);
   res.json({ success: true });
+});
+
+
+// GET /api/admin/quality?issue=&offset= — a work queue of live opportunities that
+// students can't use well yet: no description, no deadline at all, or unclear
+// whether Brazilians can apply. US-only ones are left out (students never see them).
+const QUALITY_ISSUES = {
+  no_description: o => !o.description || o.description.length < 40,
+  no_deadline: o => !o.deadline && !o.deadline_estimate && !o.deadline_text && !o.last_known_deadline,
+  nationality: o => Boolean(o.flags.checkNationality),
+};
+router.get('/quality', (req, res) => {
+  const db = readDatabase();
+  const live = db.opportunities.filter(o => isLive(o) && o.source !== 'matched-curated')
+    .map(o => ({ ...publicOpp(o, { full: true }), reviewed_at: o.reviewed_at || null }))
+    .filter(o => !o.flags.requiresUSCitizenship && !o.flags.requiresUSWorkAuth);
+  const counts = {};
+  for (const [k, fn] of Object.entries(QUALITY_ISSUES)) counts[k] = live.filter(fn).length;
+  const issue = QUALITY_ISSUES[req.query.issue] ? req.query.issue : 'no_description';
+  // Most useful first: high-school, open to Brazilians, funded
+  const rank = o => (o.education_levels.includes('high_school') ? 0 : 2) + (o.flags.brazilFocused || o.flags.openInternational ? 0 : 1) + (o.flags.funded ? 0 : 1);
+  const list = live.filter(QUALITY_ISSUES[issue]).sort((a, b) => rank(a) - rank(b) || a.programName.localeCompare(b.programName));
+  const offset = Number(req.query.offset) || 0;
+  res.json({ issue, counts, total: list.length, opportunities: list.slice(offset, offset + 20) });
 });
 
 router.get('/pending', (req, res) => {
@@ -115,8 +158,14 @@ router.put('/reports/:id', (req, res) => {
 });
 
 // Partner schools / organizations (referral codes)
+const newViewToken = () => crypto.randomBytes(16).toString('hex');
+
 router.get('/partners', (req, res) => {
   const db = readDatabase();
+  // Older partners get their private dashboard link the first time the list is opened
+  let changed = false;
+  for (const p of db.partners) if (!p.viewToken) { p.viewToken = newViewToken(); changed = true; }
+  if (changed) writeDatabase(db);
   const partners = db.partners.map(p => ({
     ...p,
     stats: impactStats(db, { userFilter: u => u.partnerCode === p.code }),
@@ -137,10 +186,21 @@ router.post('/partners', (req, res) => {
     id: uuidv4(), code, name: name.slice(0, 120), type: ['escola', 'gremio', 'organizacao'].includes(b.type) ? b.type : 'escola',
     city: String(b.city || '').slice(0, 80), state: String(b.state || '').toUpperCase().slice(0, 2),
     contact: String(b.contact || '').slice(0, 120), createdAt: new Date().toISOString(),
+    viewToken: newViewToken(),
   };
   db.partners.push(partner);
   writeDatabase(db);
   res.json(partner);
+});
+
+// POST /api/admin/partners/:id/rotate — new private dashboard link (the old one stops working)
+router.post('/partners/:id/rotate', (req, res) => {
+  const db = readDatabase();
+  const p = db.partners.find(x => x.id === req.params.id);
+  if (!p) return res.status(404).json({ error: 'Não encontrado' });
+  p.viewToken = newViewToken();
+  writeDatabase(db);
+  res.json({ viewToken: p.viewToken });
 });
 
 router.delete('/partners/:id', (req, res) => {

@@ -39,6 +39,8 @@ npm start              # http://localhost:3000 (API under /api, website served f
 - `src/import/xlsxImporter.js` — spreadsheet import, with dedupe; rows without an official link go to `capturedOpportunities`.
 - `src/seed-data/brazil-opportunities.json` + `src/import/curated.js` — hand-checked opportunities for Brazilian students (olympiads, Jovens Embaixadores, Prep Program, UWC…). Loaded on every server start and by `npm run import:br`; fixed ids, safe to repeat, archives spreadsheet duplicates. Each entry keeps `verification_source`; re-check dates every year.
 - `GET /api/users/:id/export` and `DELETE /api/users/:id` (body `{"confirm":"EXCLUIR"}`) — LGPD data download and account deletion; the privacy page is `#/privacidade` (`pagePrivacy` in `tools.js`, a draft pending legal review).
+- Admin **Qualidade** tab (`GET /api/admin/quality`, `renderAdminQuality` in `tools.js`) — work queue of live opportunities with no description, no deadline, or unclear nationality; admins fill them in and can set checked `flags` (whitelisted keys) that override text detection.
+- Partner school dashboard: each partner has a secret `viewToken`; `#/escola/CODE/TOKEN` (`pagePartnerDashboard`) calls `GET /api/public/partners/:code/dashboard?t=` — totals only, groups under 5 shown as "<5". `POST /api/admin/partners/:id/rotate` replaces the link.
 - `test/api.test.js` — API tests. Add a test for every bug fix.
 - `MatchED-Web/index.html` — the main SPA: hash router, student pages, admin panel.
 - `MatchED-Web/tools.js` — the newer public pages and shared tools:

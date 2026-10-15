@@ -263,3 +263,52 @@ test('a student can export and permanently delete their own data, and nobody els
   assert.ok(!db.opportunityReports.some(r => r.userId === me.user.id));
   assert.strictEqual((await call('GET', `/api/users/${me.user.id}`, { token: me.token })).status, 401, 'old login stops working');
 });
+
+test('data-quality queue: admins see what needs fixing and can fix it, flags included', async () => {
+  const { readDatabase, writeDatabase } = require('../src/database/db');
+  const db = readDatabase();
+  db.opportunities.push({ id: 'q-empty', programName: 'Programa Sem Descrição', category: 'summer-program', education_levels: ['high_school'], websiteUrl: 'https://example.org/q', status: 'published', active: true,
+    sheet_extra: { origin_or_modality: 'free highschool programs' } });
+  writeDatabase(db);
+  const student = await signup('quality-student@test.dev');
+  assert.strictEqual((await call('GET', '/api/admin/quality', { token: student.token })).status, 403);
+  const admin = (await call('POST', '/api/auth/login', { body: { email: 'admin@test.dev', password: 'senha-forte-123' } })).data.token;
+  const q = await call('GET', '/api/admin/quality?issue=no_description', { token: admin });
+  assert.strictEqual(q.status, 200);
+  assert.ok(q.data.opportunities.some(o => o.id === 'q-empty'));
+  assert.ok(q.data.counts.nationality >= 1);
+  const fix = await call('PUT', '/api/admin/opportunities/q-empty', { token: admin, body: {
+    description: 'Programa de verão gratuito para estudantes do ensino médio, aberto a estudantes de qualquer país.',
+    deadline: '2027-02-01', deadline_text: 'Inscrições até 1º de fevereiro', flags: { checkNationality: false, openInternational: true, hacked: true } } });
+  assert.strictEqual(fix.status, 200);
+  assert.strictEqual(fix.data.flags.checkNationality, false);
+  assert.strictEqual(fix.data.flags.openInternational, true);
+  assert.strictEqual(fix.data.deadline, '2027-02-01');
+  assert.strictEqual(readDatabase().opportunities.find(o => o.id === 'q-empty').flags.hacked, undefined, 'unknown flag keys dropped');
+  const after = await call('GET', '/api/admin/quality?issue=no_description', { token: admin });
+  assert.ok(!after.data.opportunities.some(o => o.id === 'q-empty'));
+  const bad = await call('PUT', '/api/admin/opportunities/q-empty', { token: admin, body: { deadline: 'amanhã' } });
+  assert.strictEqual(bad.data.deadline, '2027-02-01', 'invalid date ignored');
+});
+
+test('partner school dashboard: secret link only, small groups hidden', async () => {
+  const admin = (await call('POST', '/api/auth/login', { body: { email: 'admin@test.dev', password: 'senha-forte-123' } })).data.token;
+  const p = (await call('POST', '/api/admin/partners', { token: admin, body: { name: 'Escola Estadual Painel', city: 'BH', state: 'MG' } })).data;
+  assert.ok(p.viewToken && p.viewToken.length >= 32);
+  for (let i = 0; i < 2; i++) {
+    const r = await call('POST', '/api/auth/register', { body: { name: 'Aluno', email: `painel${i}@test.dev`, password: 'senha-forte-123', ref: p.code } });
+    assert.strictEqual(r.status, 200);
+  }
+  await call('POST', '/api/opportunities/check', { body: { userPath: 'high-school', gradeLevel: 'em1', ref: p.code } });
+  assert.strictEqual((await call('GET', `/api/public/partners/${p.code}/dashboard`)).status, 404);
+  assert.strictEqual((await call('GET', `/api/public/partners/${p.code}/dashboard?t=wrong`)).status, 404);
+  const d = await call('GET', `/api/public/partners/${p.code}/dashboard?t=${p.viewToken}`);
+  assert.strictEqual(d.status, 200);
+  assert.strictEqual(d.data.totals.students, 2);
+  assert.ok(d.data.totals.checks >= 1);
+  assert.strictEqual(d.data.byGrade, null, 'no breakdown under 5 students');
+  assert.ok(!JSON.stringify(d.data).includes('@test.dev'), 'no e-mails leak');
+  const rot = await call('POST', `/api/admin/partners/${p.id}/rotate`, { token: admin });
+  assert.strictEqual((await call('GET', `/api/public/partners/${p.code}/dashboard?t=${p.viewToken}`)).status, 404, 'old link stops working');
+  assert.strictEqual((await call('GET', `/api/public/partners/${p.code}/dashboard?t=${rot.data.viewToken}`)).status, 200);
+});
