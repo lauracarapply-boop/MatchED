@@ -44,4 +44,8 @@ module.exports = {
   SKIP_EMAIL_VERIFICATION: process.env.SKIP_EMAIL_VERIFICATION === 'true',
   SMTP_CONFIGURED: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
   REMINDERS_ENABLED: process.env.REMINDERS_ENABLED !== 'false',
+  // Google Sheet with the "Banco de Oportunidades" (tab "Mestre"), shared as
+  // "anyone with the link can view". When set, the server syncs it once a day.
+  BANCO_SHEET_ID: (process.env.BANCO_SHEET_ID || '').trim(),
+  BANCO_SYNC_HOURS: Number(process.env.BANCO_SYNC_HOURS) || 24,
 };

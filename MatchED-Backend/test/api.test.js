@@ -312,3 +312,127 @@ test('partner school dashboard: secret link only, small groups hidden', async ()
   assert.strictEqual((await call('GET', `/api/public/partners/${p.code}/dashboard?t=${p.viewToken}`)).status, 404, 'old link stops working');
   assert.strictEqual((await call('GET', `/api/public/partners/${p.code}/dashboard?t=${rot.data.viewToken}`)).status, 200);
 });
+
+// ── Banco de Oportunidades (aba "Mestre") ──
+const BANCO_HEAD = ['ID', '⭐', 'Programa', 'Instituição / organização', 'Resumo', 'Tipo', 'Tags / áreas (majors p/ universidades)', 'Níveis',
+  'Antes do EM', 'EM ano 1', 'EM ano 2', 'EM ano 3', 'Senior EM', 'Gap year', 'Freshman', 'Sophomore', 'Junior', 'Senior grad', 'Mestrado',
+  'Prazo (próximo)', 'Dias até o prazo', 'Costuma abrir', 'Costuma fechar', 'Status', 'Link', 'Fonte(s)', 'País', 'Valor (moeda original)',
+  'Valor máximo (US$)', 'Como o valor foi calculado', 'Observações / elegibilidade'];
+const LV = ['P', 'E1', 'E2', 'E3', 'S', 'G', 'F', 'So', 'J', 'Sr', 'M'];
+function bancoRow({ name, tipo = 'Bolsa', levels = [], deadline = '', link = '', notes = '', resumo = 'Resumo de teste com detalhes suficientes.', valor = '', usd = '' }) {
+  return ['OP1', '', name, 'Org Teste', resumo, tipo, 'Ciência Política; Economia', '', ...LV.map(l => levels.includes(l) ? 'Sim' : ''),
+    deadline, '', 'set', 'nov', '', link, 'Instagram @teste', 'Global', valor, usd, '', notes];
+}
+async function bancoXlsx(rows) {
+  const ExcelJS = require('exceljs');
+  const wb = new ExcelJS.Workbook();
+  wb.addWorksheet('Leia-me').addRow(['Banco de Oportunidades']);
+  const ws = wb.addWorksheet('Mestre');
+  ws.addRow(BANCO_HEAD);
+  rows.forEach(r => ws.addRow(bancoRow(r)));
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+test('Banco de Oportunidades: upload is recognised, routed safely and re-import updates instead of duplicating', async () => {
+  const { readDatabase } = require('../src/database/db');
+  const admin = (await call('POST', '/api/auth/login', { body: { email: 'admin@test.dev', password: 'senha-forte-123' } })).data.token;
+  const post = (body) => fetch(base + '/api/import/xlsx', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', Authorization: 'Bearer ' + admin }, body });
+  const rows = [
+    { name: 'Bolsa Banco Ensino Médio', levels: ['E1', 'E2'], deadline: new Date(Date.UTC(2099, 0, 15)), link: 'https://example.org/banco-em', valor: 'Bolsa integral', usd: 40000 },
+    { name: 'Mestrado Banco Só Pós', tipo: 'Bolsa (mestrado)', levels: ['M'], link: 'https://example.org/banco-ms' },
+    { name: 'Estágio Banco Só EUA', tipo: 'Estágio', levels: ['F', 'So'], link: 'https://example.org/banco-us', notes: 'Só para cidadãos dos EUA' },
+    { name: 'Programa Banco Sem Link', tipo: 'Programa de verão', levels: ['E2'], link: 'https://www.google.com/search?q=programa' },
+    { name: 'Curso Banco Pago', tipo: 'Curso', levels: ['E2'], link: 'https://example.org/banco-pago', notes: 'Cuidado — comercial' },
+    { name: 'Newsletter Banco', tipo: 'Recurso', levels: ['F'], link: 'https://example.org/newsletter' },
+    { name: 'Olimpíada Banco Post', tipo: 'Olimpíada', levels: ['E1'], link: 'https://www.instagram.com/p/ABC123/' },
+  ];
+  const r = await post(await bancoXlsx(rows));
+  assert.strictEqual(r.status, 200, await r.clone().text());
+  const log = await r.json();
+  assert.strictEqual(log.import_source, 'banco-xlsx');
+  assert.deepStrictEqual(log.by_destination, { opportunities: 4, captured_opportunities: 2, sources: 1 });
+
+  let db = readDatabase();
+  const em = db.opportunities.find(o => o.programName === 'Bolsa Banco Ensino Médio');
+  assert.deepStrictEqual(em.grade_levels, ['E1', 'E2']);
+  assert.deepStrictEqual(em.education_levels, ['high_school']);
+  assert.strictEqual(em.deadline, '2099-01-15');
+  assert.strictEqual(em.fundingType, 'full-scholarship');
+  assert.strictEqual(em.funding_usd_max, 40000);
+  assert.strictEqual(em.category, 'scholarship');
+  assert.strictEqual(db.opportunities.find(o => o.programName === 'Estágio Banco Só EUA').flags.requiresUSCitizenship, true);
+  assert.ok(db.capturedOpportunities.some(o => o.title === 'Programa Banco Sem Link' && o.status === 'needs_url_validation'), 'no official link → review');
+  assert.ok(db.capturedOpportunities.some(o => o.title === 'Curso Banco Pago' && o.status === 'needs_review'), '"Cuidado" never goes live');
+  assert.ok(db.sources.some(s => s.name === 'Newsletter Banco'));
+  assert.strictEqual(db.opportunities.find(o => o.programName === 'Olimpíada Banco Post').needs_official_link, true);
+
+  // An admin fixes one record by hand; the next import must not undo it.
+  const post1 = db.opportunities.find(o => o.programName === 'Olimpíada Banco Post');
+  const q = await call('GET', '/api/admin/quality?issue=social_link', { token: admin });
+  assert.ok(q.data.opportunities.some(o => o.id === post1.id), 'social-post links are in the quality queue');
+  await call('PUT', '/api/admin/opportunities/' + post1.id, { token: admin, body: { websiteUrl: 'https://example.org/olimpiada-oficial', description: 'Descrição revisada pela equipe.' } });
+
+  // Re-import with a changed summary: updates, never duplicates.
+  rows[0].resumo = 'Resumo atualizado na planilha.';
+  rows[6].resumo = 'Resumo da planilha que não deve apagar a revisão.';
+  const again = await (await post(await bancoXlsx(rows))).json();
+  assert.deepStrictEqual(again.by_destination, { opportunities: 0, captured_opportunities: 0, sources: 0 });
+  db = readDatabase();
+  assert.strictEqual(db.opportunities.filter(o => o.programName === 'Bolsa Banco Ensino Médio').length, 1);
+  assert.strictEqual(db.opportunities.find(o => o.programName === 'Bolsa Banco Ensino Médio').description, 'Resumo atualizado na planilha.');
+  const fixed = db.opportunities.find(o => o.id === post1.id);
+  assert.strictEqual(fixed.description, 'Descrição revisada pela equipe.', 'admin edits win over the spreadsheet');
+  assert.strictEqual(fixed.needs_official_link, false);
+  assert.strictEqual(fixed.websiteUrl, 'https://example.org/olimpiada-oficial');
+
+  // Matching uses the Banco's school years.
+  const check = await call('POST', '/api/opportunities/check', { body: { userPath: 'high-school', gradeLevel: 'em1', limit: 30 } });
+  const names = check.data.opportunities.map(o => o.programName);
+  assert.ok(names.includes('Bolsa Banco Ensino Médio'));
+  assert.ok(!names.includes('Mestrado Banco Só Pós'), 'master’s-only hidden from high school');
+  assert.ok(!names.includes('Estágio Banco Só EUA'));
+});
+
+test('Banco Google Sheet: status endpoint, refuses when not configured, parses the CSV export', async () => {
+  const admin = (await call('POST', '/api/auth/login', { body: { email: 'admin@test.dev', password: 'senha-forte-123' } })).data.token;
+  const s = await call('GET', '/api/import/banco', { token: admin });
+  assert.strictEqual(s.status, 200);
+  assert.strictEqual(s.data.configured, false);
+  assert.strictEqual((await call('POST', '/api/import/banco', { token: admin })).status, 400);
+  const student = await signup('banco-student@test.dev');
+  assert.strictEqual((await call('GET', '/api/import/banco', { token: student.token })).status, 403);
+
+  const { csvToObjects, parseBancoRows, parseBancoDate, bancoCsvUrl } = require('../src/import/bancoImporter');
+  const csv = [BANCO_HEAD, bancoRow({ name: 'Bolsa, com vírgula "e aspas"', levels: ['S', 'G'], deadline: '15/01/2027', link: 'https://example.org/x', usd: 'US$ 12,000' })]
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const [row] = parseBancoRows(csvToObjects(csv));
+  assert.strictEqual(row.name, 'Bolsa, com vírgula "e aspas"');
+  assert.strictEqual(row.deadline, '2027-01-15');
+  assert.deepStrictEqual(row.grade_levels, ['S', 'G']);
+  assert.strictEqual(row.funding_usd_max, 12000);
+  assert.strictEqual(parseBancoDate(46318), '2026-10-23', 'Excel serial dates');
+  assert.ok(bancoCsvUrl('abc').includes('sheet=Mestre'));
+});
+
+test('curated programs replace spreadsheet copies with a longer name, but not other programs', () => {
+  const { importCurated } = require('../src/import/curated');
+  const db = { opportunities: [
+    { id: 'a', programName: 'Programa Jovens Embaixadores', websiteUrl: 'https://x.org/a' },
+    { id: 'b', programName: 'OBMEP – Olimpíada Brasileira de Matemática das Escolas Públicas', websiteUrl: 'https://x.org/b' },
+    { id: 'c', programName: 'Jovens Embaixadores Max Thabiso Edkins', websiteUrl: 'https://x.org/c' },
+  ] };
+  importCurated(db);
+  const byId = id => db.opportunities.find(o => o.id === id);
+  assert.strictEqual(byId('a').status, 'archived');
+  assert.strictEqual(byId('b').status, 'archived');
+  assert.notStrictEqual(byId('c').status, 'archived', 'a different program with a similar name stays');
+});
+
+test('Banco: the curator’s personal notes never reach students', () => {
+  const { publicNotes } = require('../src/import/bancoImporter');
+  assert.strictEqual(publicNotes('PRIORIDADE MÁXIMA — prazo 12/nov'), 'prazo 12/nov');
+  assert.strictEqual(publicNotes('13–18 | PRIORIDADE — ciclo anual'), '13–18 | ciclo anual');
+  assert.strictEqual(publicNotes('PRIORIDADE — MatchED se qualifica'), '');
+  assert.strictEqual(publicNotes('PRIORIDADE (Gov+DCS) — proponha uma sessão sobre desinformação'), '');
+  assert.strictEqual(publicNotes('Só cidadãos dos EUA'), 'Só cidadãos dos EUA');
+});

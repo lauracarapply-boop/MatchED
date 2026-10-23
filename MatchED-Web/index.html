@@ -3214,13 +3214,19 @@
       c.innerHTML = `
         <div style="${cardStyle()}">
           <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:8px;">Planilha .xlsx</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:14px;">Envie a planilha “MatchED Apply - database.xlsx”. Ela é processada no servidor e apagada em seguida — nunca vai para o GitHub. Linhas repetidas são unificadas; oportunidades sem link oficial vão para “Capturadas” para revisão.</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:14px;">Envie o “Banco de Oportunidades” (aba Mestre) ou a antiga “MatchED Apply - database.xlsx” — o formato é reconhecido sozinho. O arquivo é processado no servidor e apagado em seguida; nunca vai para o GitHub. Linhas repetidas são unificadas e reenviar a planilha atualiza o que já existe. Sem link oficial ou marcadas com “Cuidado” vão para “Capturadas” para revisão.</div>
           <input type="file" id="adm-xlsx" accept=".xlsx" style="color:#fff;font-size:13px;margin-bottom:12px;display:block;" />
           <button id="adm-xlsx-btn" style="background:#A3E635;color:#0B1F4D;border:none;border-radius:12px;font-size:14px;font-weight:700;padding:12px 28px;cursor:pointer;">Importar planilha</button>
           <div id="adm-xlsx-result" style="margin-top:12px;font-size:13px;color:rgba(255,255,255,0.6);"></div>
         </div>
         <div style="${cardStyle()}">
-          <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:8px;">Google Sheets</div>
+          <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:8px;">Banco de Oportunidades no Google Sheets</div>
+          <div id="adm-banco-info" style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:14px;">Carregando…</div>
+          <button id="adm-banco-btn" style="background:#A3E635;color:#0B1F4D;border:none;border-radius:12px;font-size:14px;font-weight:700;padding:12px 28px;cursor:pointer;">Sincronizar agora</button>
+          <div id="adm-banco-result" style="margin-top:12px;font-size:13px;color:rgba(255,255,255,0.6);"></div>
+        </div>
+        <div style="${cardStyle()}">
+          <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:8px;">Google Sheets (planilha antiga)</div>
           <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:16px;">Planilha: 1qm81DqE78HDC9KKaQAhZnDklOGNuLZvtVe9in5XHEW4</div>
           <button id="adm-import-btn" style="background:#A3E635;color:#0B1F4D;border:none;border-radius:12px;font-size:14px;font-weight:700;padding:12px 28px;cursor:pointer;">${tr.importBtn}</button>
           <div id="adm-import-result" style="margin-top:12px;font-size:13px;color:rgba(255,255,255,0.6);"></div>
@@ -3237,6 +3243,30 @@
             </div>`).join('')}
         </div>`;
 
+      const bancoInfo = document.getElementById('adm-banco-info');
+      const bancoBtn = document.getElementById('adm-banco-btn');
+      const showBanco = (s) => {
+        if (!s.configured) {
+          bancoInfo.innerHTML = 'Ainda não conectado. No Google Sheets: Compartilhar → “Qualquer pessoa com o link” → Leitor. Depois coloque o ID da planilha (o trecho entre <code>/d/</code> e <code>/edit</code> no link) na variável <code>BANCO_SHEET_ID</code> do servidor. A partir daí ele sincroniza sozinho a cada ' + esc(String(s.syncHours || 24)) + ' h.';
+          bancoBtn.style.display = 'none';
+          return;
+        }
+        const l = s.last;
+        bancoInfo.innerHTML = 'Conectado à planilha <code>' + esc(s.sheetId) + '</code>. Sincroniza sozinho a cada ' + esc(String(s.syncHours)) + ' h.' + (l ? ' Última importação: ' + esc(new Date(l.finished_at || l.started_at).toLocaleString()) + '.' : '');
+      };
+      req('/import/banco').then(showBanco).catch(() => { bancoInfo.textContent = 'Não foi possível ler o status.'; });
+      bancoBtn.onclick = async () => {
+        const out = document.getElementById('adm-banco-result');
+        bancoBtn.disabled = true; bancoBtn.textContent = 'Sincronizando…';
+        try {
+          const log = await req('/import/banco', { method: 'POST', body: '{}' });
+          const d = log.by_destination || {};
+          out.style.color = '#A3E635';
+          out.textContent = `Pronto: ${d.opportunities || 0} novas no ar · ${d.captured_opportunities || 0} para revisão · ${d.sources || 0} fontes · ${log.updated_rows || 0} atualizadas.`;
+        } catch (e) { out.style.color = '#fca5a5'; out.textContent = 'Erro: ' + e.message; }
+        finally { bancoBtn.disabled = false; bancoBtn.textContent = 'Sincronizar agora'; }
+      };
+
       document.getElementById('adm-xlsx-btn').onclick = async () => {
         const file = document.getElementById('adm-xlsx').files[0];
         const out = document.getElementById('adm-xlsx-result');
@@ -3249,7 +3279,7 @@
           if (!res.ok) throw new Error(log.error || 'Erro');
           const d = log.by_destination || {};
           out.style.color = '#A3E635';
-          out.textContent = `Pronto: ${d.opportunities || 0} no ar · ${d.captured_opportunities || 0} para revisão · ${d.sources || 0} fontes · ${log.duplicate_rows || 0} repetidas unificadas${log.demoRemoved ? ` · ${log.demoRemoved} exemplos de demonstração removidos` : ''}.`;
+          out.textContent = `Pronto: ${d.opportunities || 0} no ar · ${d.captured_opportunities || 0} para revisão · ${d.sources || 0} fontes · ${log.updated_rows || 0} atualizadas · ${log.duplicate_rows || 0} repetidas unificadas${log.demoRemoved ? ` · ${log.demoRemoved} exemplos de demonstração removidos` : ''}.`;
         } catch (e) { out.style.color = '#fca5a5'; out.textContent = 'Erro: ' + e.message; }
         finally { btn.disabled = false; btn.textContent = 'Importar planilha'; }
       };

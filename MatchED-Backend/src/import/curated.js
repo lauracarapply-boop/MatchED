@@ -46,8 +46,19 @@ function importCurated(db, { file = FILE, now = new Date() } = {}) {
     const h = host(item.websiteUrl);
     const sameHost = db.opportunities.filter(o => o.id !== item.id && o.source !== 'matched-curated' && o.active !== false
       && host(o.websiteUrl || o.url) === h);
-    const sameName = db.opportunities.filter(o => o.id !== item.id && o.source !== 'matched-curated' && o.active !== false
-      && nameKey(o.programName || o.title) === nameKey(item.programName));
+    // Same name, or the spreadsheet name starts with it ("Programa Jovens Embaixadores",
+    // "OBMEP – Olimpíada Brasileira…"). Very short names (UWC) only match exactly.
+    const bare = k => k.replace(/^(programa|program|bolsas?|o|a) /, '');
+    const ck = bare(nameKey(item.programName));
+    const sameName = db.opportunities.filter(o => {
+      if (o.id === item.id || o.source === 'matched-curated' || o.active === false) return false;
+      const ok = bare(nameKey(o.programName || o.title));
+      if (ok === ck) return true;
+      // Prefix only when followed by a separator: "OBMEP – Olimpíada…" yes,
+      // "Jovens Embaixadores Max Thabiso Edkins" (another program) no.
+      const raw = String(o.programName || o.title || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^(programa|program) /, '');
+      return ck.length >= 5 && raw.startsWith(ck.replace(/ /g, ' ')) && /^\s*([–—:(|-]|$)/.test(raw.slice(ck.length));
+    });
     const dups = new Set(sameName);
     if (h && sameHost.length === 1) dups.add(sameHost[0]);
     for (const d of dups) {

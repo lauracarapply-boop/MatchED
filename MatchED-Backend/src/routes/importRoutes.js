@@ -5,6 +5,8 @@ const path = require('path');
 const { readDatabase, writeDatabase } = require('../database/db');
 const { importFromSheets } = require('../import/sheetsImporter');
 const { importFromXlsx, removeDemoOpportunities } = require('../import/xlsxImporter');
+const { importBancoFromSheets } = require('../import/bancoImporter');
+const cfg = require('../config');
 
 const router = express.Router();
 
@@ -37,6 +39,27 @@ router.post('/xlsx', express.raw({ type: () => true, limit: '20mb' }), async (re
     res.status(500).json({ error: e.message });
   } finally {
     fs.rm(tmp, () => {});
+  }
+});
+
+// GET /api/import/banco — is the Banco Google Sheet configured, and when did it last sync?
+router.get('/banco', (req, res) => {
+  const db = readDatabase();
+  const last = (db.importLogs || []).find(l => l.import_source === 'banco-sheets' || l.import_source === 'banco-xlsx') || null;
+  res.json({ configured: Boolean(cfg.BANCO_SHEET_ID), sheetId: cfg.BANCO_SHEET_ID || null, syncHours: cfg.BANCO_SYNC_HOURS, last });
+});
+
+// POST /api/import/banco — sync now from the Banco Google Sheet
+router.post('/banco', async (req, res) => {
+  if (!cfg.BANCO_SHEET_ID) return res.status(400).json({ error: 'Configure BANCO_SHEET_ID no servidor (veja DEPLOY.md).' });
+  try {
+    const db = readDatabase();
+    const log = await importBancoFromSheets(db, cfg.BANCO_SHEET_ID, (req.user && req.user.email) || 'admin');
+    removeDemoOpportunities(db);
+    writeDatabase(db);
+    res.json(log);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
   }
 });
 

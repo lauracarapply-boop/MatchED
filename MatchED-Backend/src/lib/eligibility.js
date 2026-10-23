@@ -140,7 +140,19 @@ function levelsFor(profile) {
   return ['high_school'];
 }
 
+// School years in the Banco (P, E1…S, G, F…Sr, M) for each profile grade.
+// Overlaps are generous on purpose: Brazilian and US school years don't line up exactly.
+function gradeCodesFor(profile) {
+  if (!profile) return null;
+  if (profile.userPath === 'college') return ['F', 'So', 'J', 'Sr', 'M', 'G'];
+  const map = { ef8: ['P'], ef9: ['P', 'E1'], em1: ['E1', 'E2'], em2: ['E2', 'E3'], em3: ['E3', 'S', 'G'], tecnico: ['E1', 'E2', 'E3', 'S'], concluido: ['S', 'G', 'F'] };
+  return map[profile.gradeLevel] || null;
+}
+
 function educationFits(opp, profile) {
+  const codes = Array.isArray(opp.grade_levels) && opp.grade_levels.length ? opp.grade_levels : null;
+  const mineCodes = codes && gradeCodesFor(profile);
+  if (mineCodes) return codes.some(c => mineCodes.includes(c));
   const levels = (opp.education_levels || []).map(norm);
   if (!levels.length) {
     if (!opp.audience || opp.audience === 'both' || !profile.userPath) return true;
