@@ -77,6 +77,23 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Erro interno' });
 });
 
+// Daily sync with the Banco de Oportunidades Google Sheet (only when BANCO_SHEET_ID is set).
+function startBancoSync() {
+  if (!cfg.BANCO_SHEET_ID) return;
+  const { importBancoFromSheets } = require('./import/bancoImporter');
+  const { readDatabase, writeDatabase } = require('./database/db');
+  const run = async () => {
+    try {
+      const db = readDatabase();
+      const log = await importBancoFromSheets(db, cfg.BANCO_SHEET_ID, 'auto-sync');
+      writeDatabase(db);
+      console.log(`🔄 Banco synced: ${log.by_destination.opportunities} new live, ${log.by_destination.captured_opportunities} new for review, ${log.updated_rows} updated.`);
+    } catch (e) { console.error('Banco sync failed:', e.message); }
+  };
+  setTimeout(run, 60 * 1000).unref();
+  setInterval(run, cfg.BANCO_SYNC_HOURS * 3600 * 1000).unref();
+}
+
 if (require.main === module) {
   // Keep the curated Brazilian opportunities that ship with the code up to date
   // (safe to repeat; an admin's archive decision is kept).
@@ -92,6 +109,7 @@ if (require.main === module) {
     console.log(`   Admin e-mails: ${cfg.ADMIN_EMAILS.join(', ') || '(none — set ADMIN_EMAILS in .env)'}`);
     console.log(`   E-mail: ${cfg.SMTP_CONFIGURED ? 'on' : 'off (codes are shown on screen in development)'}\n`);
     startReminderJob();
+    startBancoSync();
   });
 }
 

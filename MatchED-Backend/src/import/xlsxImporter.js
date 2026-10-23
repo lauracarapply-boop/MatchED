@@ -147,6 +147,12 @@ async function readWorkbookRows(filePath) {
 }
 
 async function importFromXlsx(db, filePath, importedBy = 'cli') {
+  // The "Banco de Oportunidades" (tab "Mestre") has its own format and importer.
+  const { readBancoXlsx, parseBancoRows, importBanco } = require('./bancoImporter');
+  const banco = await readBancoXlsx(filePath);
+  if (banco) {
+    return importBanco(db, parseBancoRows(banco), { importSource: 'banco-xlsx', sheetName: require('path').basename(filePath), importedBy });
+  }
   const rows = await readWorkbookRows(filePath);
   const name = require('path').basename(filePath);
   return importRows(db, rows, { importSource: 'xlsx', sheetName: name, importedBy });

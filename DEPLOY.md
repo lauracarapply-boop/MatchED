@@ -27,6 +27,8 @@ O backend também serve o site sozinho (`http://localhost:3000`), então para te
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | e-mail (Gmail: use uma *Senha de app*). Liga confirmação de cadastro, recuperação de senha e lembretes de prazo |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | opcional, para "Entrar com Google" |
 | `API_URL` | endereço público do Railway (usado no login com Google) |
+| `BANCO_SHEET_ID` | opcional: ID da planilha **Banco de Oportunidades** no Google Sheets (veja abaixo). Com ela, o site sincroniza sozinho |
+| `BANCO_SYNC_HOURS` | opcional: de quantas em quantas horas sincronizar (padrão `24`) |
 
 5. **Settings → Networking → Generate Domain** e anote a URL (ex.: `https://matched-api.up.railway.app`).
 
@@ -40,12 +42,30 @@ npm run create-admin -- lauracar.apply@gmail.com "uma-senha-nova-e-longa"
 
 Use uma senha **nova**. A antiga ficou exposta no histórico do GitHub.
 
-### Carregar as oportunidades
+### Carregar as oportunidades (Banco de Oportunidades)
 
-1. Entre no site com a conta de admin.
-2. Vá em **Admin → Importar → Planilha .xlsx** e envie `MatchED Apply - database.xlsx`.
+O **Banco de Oportunidades** (aba `Mestre`) é a lista principal do site. Há dois jeitos de conectá-lo:
 
-A planilha é processada e apagada do servidor. Ela nunca vai para o GitHub.
+**A. Google Sheets — sincroniza sozinho (recomendado)**
+
+1. Suba `Banco_de_Oportunidades_Laura.xlsx` no Google Drive e abra com o Google Sheets (*Arquivo → Salvar como Planilhas Google*).
+2. **Compartilhar → Acesso geral → Qualquer pessoa com o link → Leitor.** (Só a lista de oportunidades fica visível; nada de dados de estudantes.)
+3. Copie o ID da planilha: o trecho entre `/d/` e `/edit` no link.
+4. No Railway, crie a variável `BANCO_SHEET_ID` com esse ID e reinicie o serviço.
+5. Em **Admin → Importar** aparece “Conectado”. Clique em **Sincronizar agora** na primeira vez; depois ele sincroniza a cada 24 h.
+
+A partir daí, é só editar o Google Sheets: linhas novas entram no site, e prazos, resumos e níveis atualizados são refletidos na próxima sincronização.
+
+**B. Enviar o arquivo** — **Admin → Importar → Planilha .xlsx** e envie o `.xlsx`. O formato é reconhecido sozinho (a antiga `MatchED Apply - database.xlsx` também funciona). O arquivo é processado e apagado do servidor; nunca vai para o GitHub.
+
+**O que vai para onde**
+
+- Com link oficial → **no ar**.
+- Link que é só um post de Instagram/LinkedIn → no ar, e entra na fila **Qualidade → Sem site oficial** para alguém trocar pelo site do programa.
+- Sem link (o Banco tem uma busca do Google no lugar) ou marcada com “Cuidado” → **Capturadas**, para revisão.
+- “Recurso” (newsletters, listas) → **Fontes**.
+- Notas pessoais da curadoria (“PRIORIDADE”, “MatchED se qualifica”…) nunca aparecem para estudantes.
+- Correções feitas no Admin (descrição, link, prazo, quem pode se inscrever) não são desfeitas pela próxima sincronização; o Banco só preenche o que está vazio e avança o prazo para o próximo ciclo.
 
 > ⚠️ Não rode `npm run seed` em produção: ele apaga o banco. O comando agora se recusa a rodar se já existir um banco, a menos que você passe `--force`.
 
@@ -76,6 +96,7 @@ A planilha é processada e apagada do servidor. Ela nunca vai para o GitHub.
 ## Checklist final
 
 - [ ] `JWT_SECRET`, `ADMIN_EMAILS`, `FRONTEND_URL` e `DB_PATH` definidos no Railway
+- [ ] `BANCO_SHEET_ID` definido e **Sincronizar agora** rodado uma vez (ou o Banco enviado como .xlsx)
 - [ ] Volume `/app/data` criado
 - [ ] Admin criado pelo Shell com senha nova
 - [ ] Planilha importada pelo painel Admin

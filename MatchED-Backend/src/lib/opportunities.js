@@ -118,6 +118,7 @@ function publicOpp(opp, { full = false } = {}) {
     trust_tier: opp.trust_tier || null,
     flags: flagsFor(opp),
     updatedAt: opp.updated_at || opp.updatedAt || opp.createdAt || null,
+    ...(full ? { needs_official_link: Boolean(opp.needs_official_link) } : {}),
   };
 }
 

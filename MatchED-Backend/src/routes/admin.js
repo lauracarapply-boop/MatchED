@@ -73,6 +73,10 @@ router.put('/opportunities/:id', (req, res) => {
   if (data.active === false) data.status = 'archived';
   if (data.active === true && opp.status === 'archived') data.status = 'published';
   Object.assign(opp, data, { updated_at: new Date().toISOString(), reviewed_at: new Date().toISOString(), reviewed_by: req.user.email });
+  if (data.websiteUrl && !/instagram\.com|linkedin\.com|lnkd\.in/i.test(data.websiteUrl)) {
+    opp.needs_official_link = false;
+    opp.url = opp.official_url = data.websiteUrl;
+  }
   writeDatabase(db);
   res.json(publicOpp(opp, { full: true }));
 });
@@ -94,6 +98,8 @@ const QUALITY_ISSUES = {
   no_description: o => !o.description || o.description.length < 40,
   no_deadline: o => !o.deadline && !o.deadline_estimate && !o.deadline_text && !o.last_known_deadline,
   nationality: o => Boolean(o.flags.checkNationality),
+  // From the Banco: the only link is an Instagram/LinkedIn post, not the official page.
+  social_link: o => Boolean(o.needs_official_link),
 };
 router.get('/quality', (req, res) => {
   const db = readDatabase();
